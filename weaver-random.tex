@@ -1,0 +1,307 @@
+\font\sixteen=cmbx16
+\font\twelve=cmr12
+\font\fonteautor=cmbx12
+\font\fonteemail=cmtt10
+\font\twelvenegit=cmbxti12
+\font\twelvebold=cmbx12
+\font\trezebold=cmbx13
+\font\twelveit=cmsl12
+\font\monodoze=cmtt12
+\font\it=cmti12
+\voffset=0,959994cm % 3,5cm de margem superior e 2,5cm inferior
+\parskip=6pt
+
+\def\titulo#1{{\noindent\sixteen\hbox to\hsize{\hfill#1\hfill}}}
+\def\autor#1{{\noindent\fonteautor\hbox to\hsize{\hfill#1\hfill}}}
+\def\email#1{{\noindent\fonteemail\hbox to\hsize{\hfill#1\hfill}}}
+\def\negrito#1{{\twelvebold#1}}
+\def\italico#1{{\twelveit#1}}
+\def\monoespaco#1{{\monodoze#1}}
+\def\iniciocodigo{\lineskip=0pt\parskip=0pt}
+\def\fimcodigo{\twelve\parskip=0pt plus 1pt\lineskip=1pt}
+
+\long\def\abstract#1{\parshape 10 0.8cm 13.4cm 0.8cm 13.4cm
+0.8cm 13.4cm 0.8cm 13.4cm 0.8cm 13.4cm 0.8cm 13.4cm 0.8cm 13.4cm
+0.8cm 13.4cm 0.8cm 13.4cm 0.8cm 13.4cm
+\noindent{{\twelvenegit Abstract: }\twelveit #1}}
+
+\def\resumo#1{\parshape  10 0.8cm 13.4cm 0.8cm 13.4cm
+0.8cm 13.4cm 0.8cm 13.4cm 0.8cm 13.4cm 0.8cm 13.4cm 0.8cm 13.4cm
+0.8cm 13.4cm 0.8cm 13.4cm 0.8cm 13.4cm
+\noindent{{\twelvenegit Resumo: }\twelveit #1}}
+
+\def\secao#1{\vskip12pt\noindent{\trezebold#1}\parshape 1 0cm 15cm}
+\def\subsecao#1{\vskip12pt\noindent{\twelvebold#1}}
+\def\referencia#1{\vskip6pt\parshape 5 0cm 15cm 0.5cm 14.5cm 0.5cm 14.5cm
+0.5cm 14.5cm 0.5cm 14.5cm {\twelve\noindent#1}}
+
+%@* .
+
+\twelve
+\vskip12pt
+\titulo{Gerador de Números Aleatórios Weaver}
+\vskip12pt
+\autor{Thiago Leucz Astrizi}
+\vskip6pt
+\email{thiago@@bitbitbit.com.br}
+\vskip6pt
+
+\abstract{This article is an informal survey and analysis of random
+number generators in games. It also contains a random number generator
+described using literary programming.}
+
+\vskip 0.5cm plus 3pt minus 3pt
+
+\resumo{Este artigo é uma pesquisa informal sobre geradores de números
+aleatórios em jogos. Ela também contém um gerador de números aleatórios
+decrito usando programação literária.}
+
+\secao{1. Introdução}
+
+\subsecao{1.1. Geradores de Números Aleatórios em Jogos Eletrônicos}
+
+Um gerador de números aleatórios é útil para os seguintes cenários em
+um jogo eletrônico:
+
+a) Simular Fenômenos: Isso se aplica tanto a fenômenos naturais que
+podem ser aleatórios como a fenômonos sociais, por exemplo. Isso é
+usado exaustivamente em jogos que são simuladores, como simuladores de
+cidades como SimCity. Mas pode ser usado para simular variações no
+clima ou direção do vento em quase qualquer tipo de jogo.
+
+b) Amostragem: Podem existir muitos tipos diferentes de oponentes que
+podem ser gerados. Gerando as características variáveis aleatoriaente
+estamos simulando a amostragem de um deles dentre os vários outros
+possíveis. Por exemplo, em um jogo de Pokémon, determinada espécie de
+criatura pode possuir muitas variações diferentes como atributos que
+dependem de sua genética ou em que tipos de golpes ela pode
+realizar. Ao gerar uma criatura aleatória, obtemos uma amostragem de
+uma dentre várias outras. Há o caso de simulações de mundos inteiros
+gerados de maneira procedural.
+
+c) Programação: Durante o desenvolvimento de certos tipos de jogos,
+pode-se qurer testar seu funcionamento fazendo-o rodar substituindo as
+opções do jogador por alguma IA que realiza suas escolhas de maneira
+não-probabilística. Ou então, para se gerar níveis aleatórios de um
+jogo para fins de experimentos.
+
+d) Tomada de decisão: Em um RPG, por exemplo, um personagem poderia
+conversar com algum tipo de personagem conselheiro, que diante de uma
+questão, poderia responder aleatoriamente para o jogador qual ele acha
+que é a melhor ação a ser tomada.
+
+e) Estética: Adicionar aleatoriamente pequenas aleatoriedades em
+padrões de imagens que de outra forma seriam regulares pode aumentar o
+apelo estético de uma imagem. A aleatoriedade pode tornar também
+efeitos de transição de telas mais interessantes.
+
+f) Recreação: Um jogo eletrônico em princípio é inteiramente sobre
+recreação. Mas é possível simular dentro deles jogos recreativos mais
+clássicos que dependem da sorte como dados, roletas, baralhos.
+
+Esta lista foi adaptada da apresentada em [Knuth 1998]. Todos os
+exemplos apresentados nela foram adaptados acima para o cenário de
+jogos eletrônicos, exceto um (análise numérica).
+
+Como há tantos casos de uso diferentes para geradores de números
+aleatórios em jogos eletrônicos, o gerador ideal usado neles deve ser
+um projetado para casos bastante gerais. Um motor para criação de
+jogos eletrônicos não deve fornecer um gerador otimizado para uma das
+tarefas, mas que seja ruim nas demais.
+
+Apesar disso, geralmente há uma tolerância maior para quando um
+gerador de números aleatórios gera resultados não tão aleatórios em um
+jogo eletrônico. As consequências são muito menos desagradáveis do que
+quando isso ocorre em aplicações criptográficas, por exemplo. Muitos
+jogos antigos usavam geradores que consistiam apenas em uma sequência
+de números fixos. E o viés de seus geradores não era necessariamente
+aparente. Por outro lado, há ocasiões nas quais um gerador ruim pode
+ter consequências desagradáveis. Em simuladores que almejam realismo,
+em jogos envolvendo apostas ou competições sérias, ou naqueles em que
+certas ocorrências aleatórias devam ser raras e o desenvolvedor não
+deseja que o gerador seja manipulado para aumentar as chances de um
+jogador. Levando isso em conta, o padrão de um gerador de números
+aleatórios de um jogo deve ser alto e deve-se esperar que ele passe em
+testes estatísticos.
+
+\subsecao{1.2. Programação Literária e Notação Usada no Artigo}
+
+Este artigo utiliza a técnica de ``Programação Literária'' para
+desenvolver o seu gerador de números aleatórios. Esta técnica foi apresentada
+em [Knuth, 1984] e consiste e uma filosofia de desenvolvimento de
+\italico{software} na qual um programador desenvolve um programa escrevendo
+e explicando didaticamente o código necessário, se preocupando em
+deixar o seu funcionamento claro para as pessoas que lerem a
+explicação. Ferramentas automáticas são então utilizadas para extrair
+o código existente na expicação, mudar a ordem do código conforme for
+mais adequado para o compilador e produzir à partir do código extraído
+um programa executável.
+
+Por exemplo, neste artigo serão definidos dois arquivos
+diferentes: \monoespaco{random.c} e \monoespaco{random.h}, os quais
+podem ser inseridos estaticamente em qualquer projeto, ou compilados
+como uma biblioteca compartilhada. O conteúdo de \monoespaco{random.h}
+é:
+
+\iniciocodigo
+@(src/random.h@>=
+#ifndef WEAVER_RANDOM
+#define WEAVER_RANDOM
+#ifdef __cplusplus
+extern "C" {
+#endif
+#include <stdint.h>
+@<Declarações de Gerador Aleatório@>
+#ifdef __cplusplus
+}
+#endif
+#endif
+@
+\fimcodigo
+
+As duas primeiras linhas assim como a última são macros de segurança
+que impedem que as funções e variáveis declaradas ali sejam declaradas
+redundantemente se alguém incluir mais de uma vez o arquivo em um
+código-fonte. As demais linhas contém macros que checam se estamos
+compilando usando C++ ao invés de C. Se for o caso, nós declaramos
+todas as funções que existem neste arquivo como funções do tipo C,
+para que o compilador C++ saiba que elas não serão modificadas por
+meio de sobrecarga de operadores e que por isso não é necessário
+armazenar informações adicionais além do nome da função para
+reconhecê-la.
+
+No meio do código acima, deixamos indicado em letras vermelhas que
+iremos adicionais mais tarde ali um novo trecho de código chamado
+``Declarações de Gerador Aleatório'', com a declaração das funções que
+iremos usar. Folheando o artigo, você encontrará nas páginas seguintes
+um outro trecho de código cujo título não será \monoespaco{random.h},
+mas sim ``Declarações de Gerador Aleatório''. Será ali que o código que
+vai nesta parte do arquivo será encontrado. Pdem existir mais de um
+trecho de código com este título. Isso significa que para produzir o
+código funcional utilizado pelo compilador, devemos concatenar todos
+estes trechos com o mesmo título e colocar na parte indicada deste
+arquivo. Isso nos permite colocar a declaração de funções à medida que
+formos explicando elas no código, sem precisar declarar todas de uma
+vez só porque elas pertencem a um mesmo trecho de código.
+
+Por exemplo, podemos começar aqui a colocar algo na declaração. Vamos
+apenas inserir um cabeçalho:
+
+\iniciocodigo
+@<Declarações de Gerador Aleatório@>=
+#include "memory.h"
+@
+\fimcodigo
+
+Inserimos aqui um cabeçalho do nosso gerenciador de memória. Nosso
+gerador de números aleatórios será projetado para funcionar com o
+gerenciador de memória definido em [Astrizi, 2019].
+
+\subsecao{1.4. Funções a serem Definidas}
+
+Nosso gerador de números aleatórios deverá fornecer um total de 4
+novas funções. A primeira delas irá criar a estrutura que contém o
+gerador após receber a semente inicial:
+
+\iniciocodigo
+@<Declarações de Gerador Aleatório@>=
+struct _Wrng *_Wcreate_rng(void memory_arena, uint64_t seed);
+@
+\fimcodigo
+
+A segunda serve para desalocar o gerador de números aleatórios criado:
+
+\iniciocodigo
+@<Declarações de Gerador Aleatório@>+=
+void _Wdestroy_rng(struct _Wrng *);
+@
+\fimcodigo
+
+A terceira é a que efetivamente é usada para nos dar o próximo número
+aleatório da sequência:
+
+\iniciocodigo
+@<Declarações de Gerador Aleatório@>+=
+uint64_t _Wrand(void);
+@
+\fimcodigo
+
+A quarta função serve para inserir bytes de entropia no gerador:
+
+\iniciocodigo
+@<Declarações de Memória@>+=
+void _Wrng_entropy(size_t size, char *entropy);
+@
+\fimcodigo
+
+\secao{2. Algoritmos Geradores de Números Pseudo-Randômicos}
+
+\subsecao{2.1. SFMT}
+
+O SFMT é o ``SIMD-Oriented Fast Mersenne Twister''. Ele tem esse nome
+porque o período deste gerador é projetado para ter valores bastante
+grandes, que são primos de Mersenne ($2^n-1$ para algum $n$ inteiro
+positivo). As implementações mais usadas deste algoritmo suportam
+períodos de $2^{19937}-1$ sem que haja repetição. O que é um exagero
+para qualquer caso de uso, inclusive o uso em jogos eletrônicos. Já o
+``SIMD'' é um conjunto de instruções para valores de 128 bits que CPUs
+mais recentes suportam. Tais instruções, se suportadas, são usadas
+para tornar o desempenho mais rápido.
+
+Como geradores de números randômicos são na prática tão rápidos, algo
+que mpacta muito na velocidade de sua geração é a necessidade de
+invocar funções. Há duas formas de mitigar isso: gerar uma grande
+quantidade de números em um buffer, que deve ser preenchido novamente
+quando eles acabarem, ou pedir para o compilador tornar a
+função \italico{inline\/}. Geralmente a primeira opção é
+preferida. Contudo, o momento de preencher o buffer de números será
+quando a função acabará tendo uma queda de desempenho inesperada. Em
+programas interativos, geralmente é melhor que as funções tenham um
+comportamento mais fixo. É melhor garantir uma taxa de atualização de
+tela constante do que garantir uma taxa de atualização mais rápida, só
+que com quedas de desempenho ocasionais. Sendo assim, iremos preferir
+usar a função do modo \italico{inline\/}. Isso não é um grande
+problema devido aos algoritmos de geração de números pseudo-randômico
+na prática serem bastante simples.
+
+O SFMT funciona por meio da seguinte recursão onde cada valor $X_i$ tem
+$w$ bits:
+
+$$
+X_{i+n}=g(X_i, \ldots, X_{i+n-1})
+$$
+
+A função $g$ funciona concatenando toda a sua entrada na forma de um
+vetor binário em $\mathbb{F}_2$ com $wn$ elementos e multiplicando por
+uma matriz $A\in\mathbb{F}_2^{wn\times w}$. Na prática essa matriz é
+escolhida de modo a ser simples e assim não precisar ser representada
+ou armazenada. Ao invés disso ela simplesmente existirá na forma de
+rotações de bits, operações AND e operações de XOR (os quais
+correspondem à multiplicação e adição no corpo $\mathbb{F}$_2).
+
+Essa descrição genérica descreve toda a família de geradores Mersenne
+Twister. Para o caso específico do SFMT, os valores que escolheremos
+para nossas constantes será:
+
+@<Constantes RNG@>=
+#ifdef W_MERSENNE_TWISTER
+static const int w = 128; // Tamanho de cada X_i gerado
+static const int n = 156; // Tamanho da recursão
+#endif
+@
+
+
+\secao{Referências}
+
+\referencia{Knuth, D. E. (1984) ``Literate Programming'', The Computer Journal,
+volume 27, edição 2, p. 97--111}
+
+\referencia{Knuth, D. (1998) ``The Art of Computer Programming, v. 2:
+Seminumerical Algorithms'', Addison-Wesley Professional, terceira
+edição.}
+
+\referencia{Astrizi, T. L. (2019), ``Gerenciador de Memória Weaver'',
+visualizado em 14 de agosto de 2020:
+\monoespaco{https://github.com/thiagoharry/weaver-memory-manager}}
+
+\fim
