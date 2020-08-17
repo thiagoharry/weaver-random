@@ -199,38 +199,32 @@ gerenciador de memória definido em [Astrizi, 2019].
 
 \subsecao{1.4. Funções a serem Definidas}
 
-Nosso gerador de números aleatórios deverá fornecer um total de 4
+Nosso gerador de números aleatórios deverá fornecer um total de 3
 novas funções. A primeira delas irá criar a estrutura que contém o
-gerador após receber a semente inicial:
+gerador após receber a semente inicial e deve receber a função que
+alocará o alocador (ou \monoespaco{NULL} para usar
+o \monoespaco{malloc}):
 
 \iniciocodigo
 @<Declarações de Gerador Aleatório@>=
-struct _Wrng *_Wcreate_rng(void memory_arena, uint64_t seed);
+struct _Wrng *_Wcreate_rng(void *(*alloc)(size_t), uint64_t seed);
 @
 \fimcodigo
 
-A segunda serve para desalocar o gerador de números aleatórios criado:
-
-\iniciocodigo
-@<Declarações de Gerador Aleatório@>+=
-void _Wdestroy_rng(struct _Wrng *);
-@
-\fimcodigo
-
-A terceira é a que efetivamente é usada para nos dar o próximo número
+A segunda é a que efetivamente é usada para nos dar o próximo número
 aleatório da sequência:
 
 \iniciocodigo
 @<Declarações de Gerador Aleatório@>+=
-uint64_t _Wrand(void);
+uint64_t _Wrand(struct _wrng *);
 @
 \fimcodigo
 
-A quarta função serve para inserir bytes de entropia no gerador:
+A terceira função serve para inserir bytes de entropia no gerador:
 
 \iniciocodigo
 @<Declarações de Memória@>+=
-void _Wrng_entropy(size_t size, char *entropy);
+void _Wrng_entropy(struct _wrng *rng, size_t size, char *entropy);
 @
 \fimcodigo
 
@@ -283,13 +277,104 @@ Essa descrição genérica descreve toda a família de geradores Mersenne
 Twister. Para o caso específico do SFMT, os valores que escolheremos
 para nossas constantes será:
 
+\iniciocodigo
 @<Constantes RNG@>=
 #ifdef W_MERSENNE_TWISTER
-static const int w = 128; // Tamanho de cada X_i gerado
-static const int n = 156; // Tamanho da recursão
+#define W = 128; // Tamanho de cada X_i gerado
+#define N = 156; // Tamanho da recursão
 #endif
 @
+\fimcodigo
 
+Cada vez que geramos um novo número, temos que fazer a atualização
+$w_0 \leftarrow w_1$, $w_1 \leftarrow w_2$ e assim por diante. Mas
+podemos evitar ter que fazer tantas atribuições ou cópia mantendo
+apenas uma variável com o índice de qual deverá ser o próximo elemento
+a ser modificado de nossa sequência fixa de \monoespaco{N}
+valores. Além disso, como queremos uma função que retorne 64 bits, mas
+nosso gerador funciona com valores de 128 bits, então precisaremos de
+uma variável booleana para dizer se devemos retornar o restante de um
+valor já gerado ou se devemos gerar um novo valor e retornar seus
+primeiros 64 bits. Sendo assim, o formato de nossa estrutura de RNG
+será:
+
+\iniciocodigo
+@<SFMT: Estrutura RNG@>=
+struct _Wrng{
+  char w[W * N / 8]; // Todos N valores gerados, cada um com W bits
+  int index;         // Onde colocar próximo valor: (index * W / 8)
+  bool require_new;  // Se temos que gerar novo valor
+};
+@
+\fimcodigo
+
+O padrão ISO da linguagem C não suporta variáveis que garantidamente
+tenham 128 bits. Contudo, versões recentes do compilador GCC e Clang
+as suportam. Usando elas, podemos computar a função $g$ que computa o
+próximo elemento da sequência (ou seja, a multiplicação de nosso vetor
+por uma matriz em $\mathbb{F}_2$) por meio da seguintes operações:
+
+\iniciocodigo
+@<SFMT: Computa próximo elemento@>=
+#ifdef __SIZEOF_INT128__
+unsigned __int128 result;
+uint32_t aux[4];
+int i;
+result = ((unsigned __int128 *) (rng -> w))[index];
+result = result << 8;
+result = result ^ ((unsigned __int128 *) (rng -> w))[index];
+i = (rng -> index + 122) % N;
+aux[0] = (uint32_t) ((unsigned __int128 *) (rng -> w))[i];
+aux[1] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 1);
+aux[2] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 2);
+aux[3] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 3);
+i = (rng -> index + N - 2) % N;
+result = result ^ (((unsigned __int128 *) (rng -> w))[i] >> 8);
+aux[0] = (aux[0] >> 11) & 0xBFFFFFF6;
+aux[1] = (aux[1] >> 11) & 0xBFFAFFFF;
+aux[2] = (aux[2] >> 11) & 0xDDFECB7F;
+aux[3] = (aux[3] >> 11) & 0xDFFFFFEF;
+result = result ^ (unsigned __int128) aux;
+i = (rng -> index + N - 1) % N;
+aux[0] = (uint32_t) ((unsigned __int128 *) (rng -> w))[i];
+aux[1] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 1);
+aux[2] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 2);
+aux[3] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 3);
+aux[0] = (aux[0] << 18);
+aux[1] = (aux[1] << 18);
+aux[2] = (aux[2] << 18);
+aux[3] = (aux[3] << 18);
+result = result ^ (unsigned __int128) aux;
+rng -> index = (rng -> index + 1) % N;
+rng -> require_new = false;
+((unsigned __int128 *) (rng -> w))[index] = result;
+return (uint64_t) (result >> 64);
+#else
+#error "Mersenne Twister unsupported without 128 bit integer support." 
+#endif
+@
+\fimcodigo
+
+Essa geração de um próximo valor pseudo-randômico $w_i$ à partir de
+$w_{i-1}$, $w_{i-2}$, $w_{i-N}$ e $w_{i-34}$ precisa ser então
+integrada à função que efetivamente retorna o próimo número:
+
+\iniciocodigo
+@<SFMT: Definição de \_Wrand@>=
+uint64_t _Wrand(struct _wrng *rng){
+  if(rng -> require_new){
+    @<SFMT: Computa próximo elemento@>
+  }
+  else{
+    unsigned __int128 result;
+    rng -> require_new = true;
+    result = ((unsigned __int128 *) (rng -> w))[index];
+    rng -> index = (rng -> index + 1) % N;
+    return (result << 64) >> 64;
+  }
+}
+@
+\fimcodigo
 
 \secao{Referências}
 
