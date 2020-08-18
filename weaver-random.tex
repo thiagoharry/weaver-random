@@ -151,6 +151,7 @@ como uma biblioteca compartilhada. O conteúdo de \monoespaco{random.h}
 extern "C" {
 #endif
 #include <stdint.h>
+@<Estrutura RNG@>
 @<Declarações de Gerador Aleatório@>
 #ifdef __cplusplus
 }
@@ -184,19 +185,6 @@ arquivo. Isso nos permite colocar a declaração de funções à medida que
 formos explicando elas no código, sem precisar declarar todas de uma
 vez só porque elas pertencem a um mesmo trecho de código.
 
-Por exemplo, podemos começar aqui a colocar algo na declaração. Vamos
-apenas inserir um cabeçalho:
-
-\iniciocodigo
-@<Declarações de Gerador Aleatório@>=
-#include "memory.h"
-@
-\fimcodigo
-
-Inserimos aqui um cabeçalho do nosso gerenciador de memória. Nosso
-gerador de números aleatórios será projetado para funcionar com o
-gerenciador de memória definido em [Astrizi, 2019].
-
 \subsecao{1.4. Funções a serem Definidas}
 
 Nosso gerador de números aleatórios deverá fornecer um total de 3
@@ -207,7 +195,7 @@ o \monoespaco{malloc}):
 
 \iniciocodigo
 @<Declarações de Gerador Aleatório@>=
-struct _Wrng *_Wcreate_rng(void *(*alloc)(size_t), uint64_t seed);
+struct _Wrng *_Wcreate_rng(void *(*alloc)(size_t), void *seed);
 @
 \fimcodigo
 
@@ -223,7 +211,7 @@ uint64_t _Wrand(struct _wrng *);
 A terceira função serve para inserir bytes de entropia no gerador:
 
 \iniciocodigo
-@<Declarações de Memória@>+=
+@<Declarações de Gerador Aleatório@>+=
 void _Wrng_entropy(struct _wrng *rng, size_t size, char *entropy);
 @
 \fimcodigo
@@ -299,12 +287,14 @@ primeiros 64 bits. Sendo assim, o formato de nossa estrutura de RNG
 será:
 
 \iniciocodigo
-@<SFMT: Estrutura RNG@>=
+@<Estrutura RNG@>=
+#ifdef W_MERSENNE_TWISTER
 struct _Wrng{
   char w[W * N / 8]; // Todos N valores gerados, cada um com W bits
   int index;         // Onde colocar próximo valor: (index * W / 8)
   bool require_new;  // Se temos que gerar novo valor
 };
+#endif
 @
 \fimcodigo
 
@@ -360,7 +350,8 @@ $w_{i-1}$, $w_{i-2}$, $w_{i-N}$ e $w_{i-34}$ precisa ser então
 integrada à função que efetivamente retorna o próimo número:
 
 \iniciocodigo
-@<SFMT: Definição de \_Wrand@>=
+@<Definição de \_Wrand@>=
+#ifdef W_MERSENNE_TWISTER
 uint64_t _Wrand(struct _wrng *rng){
   if(rng -> require_new){
     @<SFMT: Computa próximo elemento@>
@@ -373,8 +364,72 @@ uint64_t _Wrand(struct _wrng *rng){
     return (result << 64) >> 64;
   }
 }
+#endif
 @
 \fimcodigo
+
+Inicializar o nosso gerador é então uma questão de alocar espaço,
+copiar os bytes aleatórios iniciais para a nossa sequência de $w$
+números aleatórios de 128 bits e ajustar as variáveis:
+
+\iniciocodigo
+@<Definição de \_Wcreate\_rng@>=
+#ifdef W_MERSENNE_TWISTER
+struct _Wrng *_Wcreate_rng(void *(*alloc)(size_t), void *seed);
+  struct _Wrng *new = (struct _Wrng *) alloc(sizeof(struct _Wrng));
+  if(new != NULL){
+    memcpy(rng -> w, seed, W * N / 8);
+    rng -> index = 0;
+    rng -> require_new = true;
+  }
+  return new;
+}
+#endif
+@
+\fimcodigo
+
+Mas como saber qual é o tamanho no buffer correto onde a semente
+inicial deve ser colocada? Isso será declarado no cabeçalho:
+
+\iniciocodigo
+@<Declarações de Gerador Aleatório@>+=
+#ifdef W_MERSENNE_TWISTER
+#define W_SEED_SIZE (128 * 156 / 8)
+#endif
+@
+\fimcodigo
+
+Por fim, para adicionar mais aleatoriedade ao nosso gerador depois de
+usarmos ele por algum tempo, basta adicionar tal aleatoriedade
+diretamente no buffer de valores $w$:
+
+\iniciocodigo
+@<Definição de \_Wrng\_entropy@>=
+#ifdef W_MERSENNE_TWISTER
+void _Wrng_entropy(struct _wrng *rng, size_t size, char *entropy){
+  size_t real_size = (size > W_SEED_SIZE):(W_SEED_SIZE):(size);
+  memcpy(rng -> w, entropy, real_size);
+}
+#endif
+@
+\fimcodigo
+
+\subsecao{2.X. Estrutura Final do Arquivo}
+
+O arquivo com o código-fonte de nossas funções terá a seguinte forma:
+
+
+\iniciocodigo
+@(src/random.c@>=
+@<Incluir Cabeçalhos Necessários@>
+#include "random.h"
+@<Constantes RNG@>
+@<Definição de \_Wrand@>
+@<Definição de \_Wcreate\_rng@>
+@<Definição de \_Wrng\_entropy@>
+@
+\fimcodigo
+
 
 \secao{Referências}
 
