@@ -151,6 +151,7 @@ como uma biblioteca compartilhada. O conteúdo de \monoespaco{random.h}
 extern "C" {
 #endif
 #include <stdint.h>
+#define W_RNG_MERSENNE_TWISTER
 @<Estrutura RNG@>
 @<Declarações de Gerador Aleatório@>
 #ifdef __cplusplus
@@ -187,7 +188,7 @@ vez só porque elas pertencem a um mesmo trecho de código.
 
 \subsecao{1.4. Funções a serem Definidas}
 
-Nosso gerador de números aleatórios deverá fornecer um total de 3
+Nosso gerador de números aleatórios deverá fornecer um total de 4
 novas funções. A primeira delas irá criar a estrutura que contém o
 gerador após receber a semente inicial e deve receber a função que
 alocará o alocador (ou \monoespaco{NULL} para usar
@@ -213,6 +214,107 @@ A terceira função serve para inserir bytes de entropia no gerador:
 \iniciocodigo
 @<Declarações de Gerador Aleatório@>+=
 void _Wrng_entropy(struct _wrng *rng, size_t size, char *entropy);
+@
+\fimcodigo
+
+A última função será apenas para finalizar o uso de um gerador de
+números aleatórios. Ele não poderá mais ser usado depois de
+finalizado:
+
+\iniciocodigo
+@<Declarações de Gerador Aleatório@>+=
+bool _Wdestroy_rng(struct _Wrng *);
+@
+\fimcodigo
+
+\subsecao{1.5. Suporte à Threads}
+
+O código adicionado aqui servirá para garantir que mais de uma thread
+possa usar o gerador de números randômicos sem problemas após a sua
+inicialização. Para isso precisamos de um cabeçalho adequado para
+declarar os tipos que iremos usar:
+
+\iniciocodigo
+@<Incluir Cabeçalhos Necessários@>+=
+#if defined(__unix__) || defined(__APPLE__)
+#include <pthread.h>
+#endif
+#if defined(_WIN32)
+#include <windows.h>
+#endif
+@
+\fimcodigo
+
+Tudo o que serápreciso fazer é, para cada gerador, definir um mutex a
+ser colocado dentro do gerador (dentro do \monoespaco{struct \_Wrng}):
+
+\iniciocodigo
+@<Declaração de Mutex@>=
+#if defined(__unix__) || defined(__APPLE__)
+pthread_mutex_t mutex;
+#endif
+#if defined(_WIN32)
+CRITICAL_SECTION mutex;
+#endif
+@
+\fimcodigo
+
+Se temos um ponteiro para \monoespaco{struct \_Wrng} chamado
+de \monoespaco{rng}, podemos inicializar seu mutex com:
+
+\iniciocodigo
+@<Inicialização de Mutex@>=
+#if defined(__unix__) || defined(__APPLE__)
+pthread_mutex_init(rng -> mutex, NULL);
+#endif
+#if defined(_WIN32)
+InitializeCriticalSection(rng -> mutex);
+#endif
+@
+\fimcodigo
+
+Para pedirmos o uso de um Mutex, fazemos:
+
+\iniciocodigo
+@<Mutex:WAIT@>=
+#if defined(__unix__) || defined(__APPLE__)
+pthread_mutex_lock(rng -> mutex);
+#endif
+#if defined(_WIN32)
+EnterCriticalSection(rng -> mutex);
+#endif
+@
+\fimcodigo
+
+E o código para liberarmos o uso do Mutex:
+
+\iniciocodigo
+@<Mutex:SIGNAL@>=
+#if defined(__unix__) || defined(__APPLE__)
+pthread_mutex_unlock(rng -> mutex);
+#endif
+#if defined(_WIN32)
+LeaveCriticalSection(rng -> mutex);
+#endif
+@
+\fimcodigo
+
+Como desalocar o gerador de números aleatórios é deixado a cargo do
+usuário, a única coisa que a função de finalizar o uso do gerador de
+números aleatórios precisa fazer é finalizar seu Mutex. Podemos
+definir o código dela inteiro aqui:
+
+\iniciocodigo
+@<Definição de \_Wdestroy\_rng@>=
+bool _Wdestroy_rng(struct _Wrng *rng){
+#if defined(__unix__) || defined(__APPLE__)
+  return pthread_mutex_destroy(rng -> mutex);
+#endif
+#if defined(_WIN32)
+  DeleteCriticalSection(rng -> mutex);
+  return true; // Sempre é bem-sucedida segundo a documentação
+#endif
+}
 @
 \fimcodigo
 
@@ -267,9 +369,9 @@ para nossas constantes será:
 
 \iniciocodigo
 @<Constantes RNG@>=
-#ifdef W_MERSENNE_TWISTER
-#define W = 128; // Tamanho de cada X_i gerado
-#define N = 156; // Tamanho da recursão
+#ifdef W_RNG_MERSENNE_TWISTER
+#define W 128 // Tamanho de cada X_i gerado
+#define N 156 // Tamanho da recursão
 #endif
 @
 \fimcodigo
@@ -288,7 +390,7 @@ será:
 
 \iniciocodigo
 @<Estrutura RNG@>=
-#ifdef W_MERSENNE_TWISTER
+#ifdef W_RNG_MERSENNE_TWISTER
 struct _Wrng{
   char w[W * N / 8]; // Todos N valores gerados, cada um com W bits
   int index;         // Onde colocar próximo valor: (index * W / 8)
@@ -351,7 +453,7 @@ integrada à função que efetivamente retorna o próimo número:
 
 \iniciocodigo
 @<Definição de \_Wrand@>=
-#ifdef W_MERSENNE_TWISTER
+#ifdef W_RNG_MERSENNE_TWISTER
 uint64_t _Wrand(struct _wrng *rng){
   if(rng -> require_new){
     @<SFMT: Computa próximo elemento@>
@@ -374,7 +476,7 @@ números aleatórios de 128 bits e ajustar as variáveis:
 
 \iniciocodigo
 @<Definição de \_Wcreate\_rng@>=
-#ifdef W_MERSENNE_TWISTER
+#ifdef W_RNG_MERSENNE_TWISTER
 struct _Wrng *_Wcreate_rng(void *(*alloc)(size_t), void *seed);
   struct _Wrng *new = (struct _Wrng *) alloc(sizeof(struct _Wrng));
   if(new != NULL){
@@ -393,7 +495,7 @@ inicial deve ser colocada? Isso será declarado no cabeçalho:
 
 \iniciocodigo
 @<Declarações de Gerador Aleatório@>+=
-#ifdef W_MERSENNE_TWISTER
+#ifdef W_RNG_MERSENNE_TWISTER
 #define W_SEED_SIZE (128 * 156 / 8)
 #endif
 @
@@ -405,7 +507,7 @@ diretamente no buffer de valores $w$:
 
 \iniciocodigo
 @<Definição de \_Wrng\_entropy@>=
-#ifdef W_MERSENNE_TWISTER
+#ifdef W_RNG_MERSENNE_TWISTER
 void _Wrng_entropy(struct _wrng *rng, size_t size, char *entropy){
   size_t real_size = (size > W_SEED_SIZE):(W_SEED_SIZE):(size);
   memcpy(rng -> w, entropy, real_size);
@@ -423,10 +525,12 @@ O arquivo com o código-fonte de nossas funções terá a seguinte forma:
 @(src/random.c@>=
 @<Incluir Cabeçalhos Necessários@>
 #include "random.h"
+#define W_RNG_MERSENNE_TWISTER
 @<Constantes RNG@>
 @<Definição de \_Wrand@>
 @<Definição de \_Wcreate\_rng@>
 @<Definição de \_Wrng\_entropy@>
+@<Definição de \_Wdestroy\_rng@>
 @
 \fimcodigo
 
@@ -440,8 +544,5 @@ volume 27, edição 2, p. 97--111}
 Seminumerical Algorithms'', Addison-Wesley Professional, terceira
 edição.}
 
-\referencia{Astrizi, T. L. (2019), ``Gerenciador de Memória Weaver'',
-visualizado em 14 de agosto de 2020:
-\monoespaco{https://github.com/thiagoharry/weaver-memory-manager}}
 
 \fim

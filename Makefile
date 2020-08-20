@@ -7,12 +7,12 @@ report:
 #doc_en:
 #	tex weaver-memory-manager_en.tex
 #	dvipdf weaver-memory-manager_en.dvi
-#src: weaver-memory-manager.tex
-#	ctangle weaver-memory-manager.tex
-#	rm weaver-memory-manager.c
-#test: src tests/test.c src/memory.c
-#	${CC} ${FLAGS} -pthread tests/test.c src/memory.c -o test
-#	./test
+src: weaver-random.tex
+	ctangle weaver-random.tex
+	rm weaver-random.c
+test: src tests/test.c src/random.c
+	${CC} ${FLAGS} -pthread tests/test.c src/random.c -o test
+	./test
 #web-test:
 #	emcc  tests/test.c src/memory.c -s WASM=1 -o doc/test/test.html
 #web-benchmark:
