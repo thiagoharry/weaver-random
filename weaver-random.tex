@@ -151,7 +151,11 @@ como uma biblioteca compartilhada. O conteúdo de \monoespaco{random.h}
 extern "C" {
 #endif
 #include <stdint.h>
+#include <stdbool.h>
+#if !defined(W_RNG_MERSENNE_TWISTER)
 #define W_RNG_MERSENNE_TWISTER
+#endif
+@<Constantes RNG@>
 @<Estrutura RNG@>
 @<Declarações de Gerador Aleatório@>
 #ifdef __cplusplus
@@ -205,7 +209,7 @@ aleatório da sequência:
 
 \iniciocodigo
 @<Declarações de Gerador Aleatório@>+=
-uint64_t _Wrand(struct _wrng *);
+uint64_t _Wrand(struct _Wrng *);
 @
 \fimcodigo
 
@@ -213,7 +217,7 @@ A terceira função serve para inserir bytes de entropia no gerador:
 
 \iniciocodigo
 @<Declarações de Gerador Aleatório@>+=
-void _Wrng_entropy(struct _wrng *rng, size_t size, char *entropy);
+void _Wrng_entropy(struct _Wrng *rng, size_t size, char *entropy);
 @
 \fimcodigo
 
@@ -308,7 +312,7 @@ definir o código dela inteiro aqui:
 @<Definição de \_Wdestroy\_rng@>=
 bool _Wdestroy_rng(struct _Wrng *rng){
 #if defined(__unix__) || defined(__APPLE__)
-  return pthread_mutex_destroy(rng -> mutex);
+  return pthread_mutex_destroy(&(rng -> mutex));
 #endif
 #if defined(_WIN32)
   DeleteCriticalSection(rng -> mutex);
@@ -370,8 +374,8 @@ para nossas constantes será:
 \iniciocodigo
 @<Constantes RNG@>=
 #ifdef W_RNG_MERSENNE_TWISTER
-#define W 128 // Tamanho de cada X_i gerado
-#define N 156 // Tamanho da recursão
+#define _W 128 // Tamanho de cada X_i gerado
+#define _N 156 // Tamanho da recursão
 #endif
 @
 \fimcodigo
@@ -392,9 +396,10 @@ será:
 @<Estrutura RNG@>=
 #ifdef W_RNG_MERSENNE_TWISTER
 struct _Wrng{
-  char w[W * N / 8]; // Todos N valores gerados, cada um com W bits
-  int index;         // Onde colocar próximo valor: (index * W / 8)
+  char w[_W * _N / 8]; // Todos N valores gerados, cada um com _W bits
+  int index;         // Onde colocar próximo valor: (index * _W / 8)
   bool require_new;  // Se temos que gerar novo valor
+  @<Declaração de Mutex@>
 };
 #endif
 @
@@ -409,25 +414,26 @@ por uma matriz em $\mathbb{F}_2$) por meio da seguintes operações:
 \iniciocodigo
 @<SFMT: Computa próximo elemento@>=
 #ifdef __SIZEOF_INT128__
-unsigned __int128 result;
+unsigned __int128 result, tmp;
 uint32_t aux[4];
 int i;
-result = ((unsigned __int128 *) (rng -> w))[index];
+result = ((unsigned __int128 *) (rng -> w))[rng -> index];
 result = result << 8;
-result = result ^ ((unsigned __int128 *) (rng -> w))[index];
-i = (rng -> index + 122) % N;
+result = result ^ ((unsigned __int128 *) (rng -> w))[rng -> index];
+i = (rng -> index + 122) % _N;
 aux[0] = (uint32_t) ((unsigned __int128 *) (rng -> w))[i];
 aux[1] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 1);
 aux[2] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 2);
 aux[3] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 3);
-i = (rng -> index + N - 2) % N;
+i = (rng -> index + _N - 2) % _N;
 result = result ^ (((unsigned __int128 *) (rng -> w))[i] >> 8);
 aux[0] = (aux[0] >> 11) & 0xBFFFFFF6;
 aux[1] = (aux[1] >> 11) & 0xBFFAFFFF;
 aux[2] = (aux[2] >> 11) & 0xDDFECB7F;
 aux[3] = (aux[3] >> 11) & 0xDFFFFFEF;
-result = result ^ (unsigned __int128) aux;
-i = (rng -> index + N - 1) % N;
+memcpy(&tmp, aux, 16);
+result = result ^ tmp;
+i = (rng -> index + _N - 1) % _N;
 aux[0] = (uint32_t) ((unsigned __int128 *) (rng -> w))[i];
 aux[1] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 1);
 aux[2] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 2);
@@ -436,10 +442,11 @@ aux[0] = (aux[0] << 18);
 aux[1] = (aux[1] << 18);
 aux[2] = (aux[2] << 18);
 aux[3] = (aux[3] << 18);
-result = result ^ (unsigned __int128) aux;
-rng -> index = (rng -> index + 1) % N;
+memcpy(&tmp, aux, 16);
+result = result ^ tmp;
+rng -> index = (rng -> index + 1) % _N;
 rng -> require_new = false;
-((unsigned __int128 *) (rng -> w))[index] = result;
+((unsigned __int128 *) (rng -> w))[rng -> index] = result;
 return (uint64_t) (result >> 64);
 #else
 #error "Mersenne Twister unsupported without 128 bit integer support." 
@@ -454,15 +461,15 @@ integrada à função que efetivamente retorna o próimo número:
 \iniciocodigo
 @<Definição de \_Wrand@>=
 #ifdef W_RNG_MERSENNE_TWISTER
-uint64_t _Wrand(struct _wrng *rng){
+uint64_t _Wrand(struct _Wrng *rng){
   if(rng -> require_new){
     @<SFMT: Computa próximo elemento@>
   }
   else{
     unsigned __int128 result;
     rng -> require_new = true;
-    result = ((unsigned __int128 *) (rng -> w))[index];
-    rng -> index = (rng -> index + 1) % N;
+    result = ((unsigned __int128 *) (rng -> w))[rng -> index];
+    rng -> index = (rng -> index + 1) % _N;
     return (result << 64) >> 64;
   }
 }
@@ -477,12 +484,12 @@ números aleatórios de 128 bits e ajustar as variáveis:
 \iniciocodigo
 @<Definição de \_Wcreate\_rng@>=
 #ifdef W_RNG_MERSENNE_TWISTER
-struct _Wrng *_Wcreate_rng(void *(*alloc)(size_t), void *seed);
-  struct _Wrng *new = (struct _Wrng *) alloc(sizeof(struct _Wrng));
+struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), void *seed){
+  struct _Wrng *new = (struct _Wrng *) allocator(sizeof(struct _Wrng));
   if(new != NULL){
-    memcpy(rng -> w, seed, W * N / 8);
-    rng -> index = 0;
-    rng -> require_new = true;
+    memcpy(new -> w, seed, _W * _N / 8);
+    new -> index = 0;
+    new -> require_new = true;
   }
   return new;
 }
@@ -496,7 +503,7 @@ inicial deve ser colocada? Isso será declarado no cabeçalho:
 \iniciocodigo
 @<Declarações de Gerador Aleatório@>+=
 #ifdef W_RNG_MERSENNE_TWISTER
-#define W_SEED_SIZE (128 * 156 / 8)
+#define W_RNG_SEED_SIZE (128 * 156 / 8)
 #endif
 @
 \fimcodigo
@@ -508,8 +515,8 @@ diretamente no buffer de valores $w$:
 \iniciocodigo
 @<Definição de \_Wrng\_entropy@>=
 #ifdef W_RNG_MERSENNE_TWISTER
-void _Wrng_entropy(struct _wrng *rng, size_t size, char *entropy){
-  size_t real_size = (size > W_SEED_SIZE):(W_SEED_SIZE):(size);
+void _Wrng_entropy(struct _Wrng *rng, size_t size, char *entropy){
+  size_t real_size = ((size > W_RNG_SEED_SIZE)?(W_RNG_SEED_SIZE):(size));
   memcpy(rng -> w, entropy, real_size);
 }
 #endif
@@ -525,8 +532,7 @@ O arquivo com o código-fonte de nossas funções terá a seguinte forma:
 @(src/random.c@>=
 @<Incluir Cabeçalhos Necessários@>
 #include "random.h"
-#define W_RNG_MERSENNE_TWISTER
-@<Constantes RNG@>
+#include <string.h> // memcpy
 @<Definição de \_Wrand@>
 @<Definição de \_Wcreate\_rng@>
 @<Definição de \_Wrng\_entropy@>

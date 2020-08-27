@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <bsd/stdlib.h> 
 #if defined(_WIN32)
 #include <windows.h>
 #endif
@@ -13,6 +14,10 @@
 #include "../src/random.h"
 
 int numero_de_testes = 0, acertos = 0, falhas = 0;
+
+#ifdef W_RNG_MERSENNE_TWISTER
+#include "sfmt.c"
+#endif
 
 size_t count_utf8_code_points(const char *s) {
     size_t count = 0;

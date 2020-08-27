@@ -11,7 +11,7 @@ src: weaver-random.tex
 	ctangle weaver-random.tex
 	rm weaver-random.c
 test: src tests/test.c src/random.c
-	${CC} ${FLAGS} -pthread tests/test.c src/random.c -o test
+	${CC} ${FLAGS} -DW_RNG_MERSENNE_TWISTER -pthread tests/test.c src/random.c -o test -lbsd
 	./test
 #web-test:
 #	emcc  tests/test.c src/memory.c -s WASM=1 -o doc/test/test.html
