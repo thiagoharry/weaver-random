@@ -75,24 +75,34 @@ void initialize_seed(void){
 /* Início dos Testes */
 #if defined(W_RNG_MERSENNE_TWISTER)
 void test_mersenne_twister(void){
-  
+  bool equal = true;
+  int i;
+  struct SFMT_T ref_rng;
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
+  sfmt_init_by_array(&ref_rng, (uint32_t *) seed, W_RNG_SEED_SIZE / 4);
+  for(i = 0; i < 1000; i ++){
+    uint64_t a, b;
+    a = _Wrand(my_rng);
+    b = sfmt_genrand_uint64(&ref_rng);
+    printf("%lu %lu\n", a, b);
+    if(a != b){
+      equal = false;
+      break;
+    }
+  }
+  assert("Mersenne Twister generate same numbers as in reference", equal);
+  free(my_rng);
 }
 #endif
 
 
  
 int main(int argc, char **argv){
-  int i;
   initialize_seed();
-  printf("Starting tests. Seed: (");
-  for(i = 0; i < W_RNG_SEED_SIZE; i ++){
-    printf("%x", seed[i]);
-    if(i < W_RNG_SEED_SIZE - 1)
-      printf(", ");
-    else
-      printf(")\n\n");
-  }
-  
+  printf("Starting tests.\n\n");
+#if defined(W_RNG_MERSENNE_TWISTER)
+  test_mersenne_twister();
+#endif
   imprime_resultado();
   return 0;
 }
