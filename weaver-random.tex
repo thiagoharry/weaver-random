@@ -194,13 +194,13 @@ vez só porque elas pertencem a um mesmo trecho de código.
 
 Nosso gerador de números aleatórios deverá fornecer um total de 4
 novas funções. A primeira delas irá criar a estrutura que contém o
-gerador após receber a semente inicial e deve receber a função que
-alocará o alocador (ou \monoespaco{NULL} para usar
+gerador após receber a semente inicial (de 32 bits) e deve receber a
+função que alocará o alocador (ou \monoespaco{NULL} para usar
 o \monoespaco{malloc}):
 
 \iniciocodigo
 @<Declarações de Gerador Aleatório@>=
-struct _Wrng *_Wcreate_rng(void *(*alloc)(size_t), void *seed);
+struct _Wrng *_Wcreate_rng(void *(*alloc)(size_t), uint32_t seed);
 @
 \fimcodigo
 
@@ -477,19 +477,24 @@ uint64_t _Wrand(struct _Wrng *rng){
 @
 \fimcodigo
 
-Inicializar o nosso gerador é então uma questão de alocar espaço,
-copiar os bytes aleatórios iniciais para a nossa sequência de $w$
-números aleatórios de 128 bits e ajustar as variáveis:
+Inicializar o nosso gerador é então uma questão de alocar espaço e
+usar o seguinte método obtido da implementação de referência sobre
+como inicializar o estado do gerador à partir da semente de 32 bits:
 
 \iniciocodigo
 @<Definição de \_Wcreate\_rng@>=
 #ifdef W_RNG_MERSENNE_TWISTER
-struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), void *seed){
+struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), uint32_t seed){
+  int i;
   struct _Wrng *new = (struct _Wrng *) allocator(sizeof(struct _Wrng));
   if(new != NULL){
-    memcpy(new -> w, seed, _W * _N / 8);
-    new -> index = 0;
+    new -> w[0] = seed;
+    for(i = 1; i < _N; i ++){
+      new -> w[i] = 1812433253UL * (new -> w[i - 1] ^ (new -> w[i - 1] >> 30))
+                    + i;
+    }
     new -> require_new = true;
+    new -> index = 0;
   }
   return new;
 }

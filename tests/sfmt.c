@@ -476,3 +476,26 @@ void sfmt_init_by_array(sfmt_t * sfmt, uint32_t *init_key, int key_length) {
     sfmt->idx = SFMT_N32;
     period_certification(sfmt);
 }
+
+
+/**
+ * This function initializes the internal state array with a 32-bit
+ * integer seed.
+ *
+ * @param sfmt SFMT internal state
+ * @param seed a 32-bit integer used as the seed.
+ */
+void sfmt_init_gen_rand(sfmt_t * sfmt, uint32_t seed) {
+    int i;
+
+    uint32_t *psfmt32 = &sfmt->state[0].u[0];
+
+    psfmt32[idxof(0)] = seed;
+    for (i = 1; i < SFMT_N32; i++) {
+        psfmt32[idxof(i)] = 1812433253UL * (psfmt32[idxof(i - 1)]
+                                            ^ (psfmt32[idxof(i - 1)] >> 30))
+            + i;
+    }
+    sfmt->idx = SFMT_N32;
+    period_certification(sfmt);
+}

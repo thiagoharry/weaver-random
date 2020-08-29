@@ -65,11 +65,11 @@ void imprime_resultado(void){
 /* Globais */
 
 #if defined(W_RNG_MERSENNE_TWISTER)
-char seed[W_RNG_SEED_SIZE];
+uint32_t seed;
 #endif
 
 void initialize_seed(void){
-  arc4random_buf(seed, W_RNG_SEED_SIZE);
+  arc4random_buf(&seed, 4);
 }
 
 /* Início dos Testes */
@@ -79,7 +79,22 @@ void test_mersenne_twister(void){
   int i;
   struct SFMT_T ref_rng;
   struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
-  sfmt_init_by_array(&ref_rng, (uint32_t *) seed, W_RNG_SEED_SIZE / 4);
+  sfmt_init_gen_rand(&ref_rng, seed);
+  {
+    char *p1 = (char *) &(ref_rng.state), *p2 = (char *) my_rng -> w;
+    for(i = 0; i < W_RNG_SEED_SIZE; i ++){
+      printf("(%hhx, %hhx)", *p1, *p2);
+      if(*p1 != *p2){
+	equal = false;
+	break;
+      }
+      p1 ++;
+      p2 ++;
+    }
+    printf("\n");
+    assert("SFMT initialization works as in reference code", equal);
+    equal = true;
+  }
   for(i = 0; i < 1000; i ++){
     uint64_t a, b;
     a = _Wrand(my_rng);
@@ -99,7 +114,7 @@ void test_mersenne_twister(void){
  
 int main(int argc, char **argv){
   initialize_seed();
-  printf("Starting tests.\n\n");
+  printf("Starting tests. Seed: %luu\n\n", (long unsigned int) seed);
 #if defined(W_RNG_MERSENNE_TWISTER)
   test_mersenne_twister();
 #endif
