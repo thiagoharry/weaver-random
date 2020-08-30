@@ -192,7 +192,7 @@ vez só porque elas pertencem a um mesmo trecho de código.
 
 \subsecao{1.4. Funções a serem Definidas}
 
-Nosso gerador de números aleatórios deverá fornecer um total de 4
+Nosso gerador de números aleatórios deverá fornecer um total de 3
 novas funções. A primeira delas irá criar a estrutura que contém o
 gerador após receber a semente inicial (de 32 bits) e deve receber a
 função que alocará o alocador (ou \monoespaco{NULL} para usar
@@ -210,14 +210,6 @@ aleatório da sequência:
 \iniciocodigo
 @<Declarações de Gerador Aleatório@>+=
 uint64_t _Wrand(struct _Wrng *);
-@
-\fimcodigo
-
-A terceira função serve para inserir bytes de entropia no gerador:
-
-\iniciocodigo
-@<Declarações de Gerador Aleatório@>+=
-void _Wrng_entropy(struct _Wrng *rng, size_t size, char *entropy);
 @
 \fimcodigo
 
@@ -488,13 +480,14 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), uint32_t seed){
   int i;
   struct _Wrng *new = (struct _Wrng *) allocator(sizeof(struct _Wrng));
   if(new != NULL){
-    new -> w[0] = seed;
-    for(i = 1; i < _N; i ++){
-      new -> w[i] = 1812433253UL * (new -> w[i - 1] ^ (new -> w[i - 1] >> 30))
-                    + i;
+    uint32_t *p = (uint32_t *) (new -> w);
+    p[0] = seed;
+    for(i = 1; i < _N * 4; i ++){
+      p[i] = 1812433253UL * (p[i - 1] ^ (p[i - 1] >> 30)) + i;
     }
     new -> require_new = true;
     new -> index = 0;
+    @<SFMT: Garante Período@>
   }
   return new;
 }
@@ -502,31 +495,28 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), uint32_t seed){
 @
 \fimcodigo
 
-Mas como saber qual é o tamanho no buffer correto onde a semente
-inicial deve ser colocada? Isso será declarado no cabeçalho:
+Entretanto, antes de retornar o código acima é preciso checar se o
+estado que geramos realmente tem o período desejado de
+$2^{19937}-1$. O modo de fazer isso é por meio da checagem de paridade
+para alguns bits específicos de nossa semente inicial. Se a paridade
+nao estiver correta, apenas ajustamos ela sem precisar mudar os demais
+valores gerados:
 
 \iniciocodigo
-@<Declarações de Gerador Aleatório@>+=
-#ifdef W_RNG_MERSENNE_TWISTER
-#define W_RNG_SEED_SIZE (128 * 156 / 8)
-#endif
-@
-\fimcodigo
-
-Por fim, para adicionar mais aleatoriedade ao nosso gerador depois de
-usarmos ele por algum tempo, basta adicionar tal aleatoriedade
-diretamente no buffer de valores $w$:
-
-\iniciocodigo
-@<Definição de \_Wrng\_entropy@>=
-#ifdef W_RNG_MERSENNE_TWISTER
-void _Wrng_entropy(struct _Wrng *rng, size_t size, char *entropy){
-  size_t real_size = ((size > W_RNG_SEED_SIZE)?(W_RNG_SEED_SIZE):(size));
-  memcpy(rng -> w, entropy, real_size);
+@<SFMT: Garante Período@>=
+{
+  // Máscara de bits a serem checados:
+  uint32_t parity = (p[0] & 0x00000001U) ^ (p[3] & 0xc98e126aU);
+  // Checagem de paridade:
+  for (i = 16; i > 0; i >>= 1)
+    parity ^= parity >> i;
+  parity = parity & 1;
+  if(parity != 1)
+    p[0] = p[0] ^ 1;
 }
-#endif
 @
 \fimcodigo
+
 
 \subsecao{2.X. Estrutura Final do Arquivo}
 
@@ -540,7 +530,6 @@ O arquivo com o código-fonte de nossas funções terá a seguinte forma:
 #include <string.h> // memcpy
 @<Definição de \_Wrand@>
 @<Definição de \_Wcreate\_rng@>
-@<Definição de \_Wrng\_entropy@>
 @<Definição de \_Wdestroy\_rng@>
 @
 \fimcodigo

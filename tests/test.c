@@ -82,8 +82,7 @@ void test_mersenne_twister(void){
   sfmt_init_gen_rand(&ref_rng, seed);
   {
     char *p1 = (char *) &(ref_rng.state), *p2 = (char *) my_rng -> w;
-    for(i = 0; i < W_RNG_SEED_SIZE; i ++){
-      printf("(%hhx, %hhx)", *p1, *p2);
+    for(i = 0; i < _W * _N / 8; i ++){
       if(*p1 != *p2){
 	equal = false;
 	break;
@@ -91,7 +90,6 @@ void test_mersenne_twister(void){
       p1 ++;
       p2 ++;
     }
-    printf("\n");
     assert("SFMT initialization works as in reference code", equal);
     equal = true;
   }
@@ -105,7 +103,7 @@ void test_mersenne_twister(void){
       break;
     }
   }
-  assert("Mersenne Twister generate same numbers as in reference", equal);
+  assert("SFMT generates same numbers as in reference", equal);
   free(my_rng);
 }
 #endif
@@ -114,7 +112,7 @@ void test_mersenne_twister(void){
  
 int main(int argc, char **argv){
   initialize_seed();
-  printf("Starting tests. Seed: %luu\n\n", (long unsigned int) seed);
+  printf("Starting tests. Seed: %lu\n\n", (long unsigned int) seed);
 #if defined(W_RNG_MERSENNE_TWISTER)
   test_mersenne_twister();
 #endif
