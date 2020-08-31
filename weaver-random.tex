@@ -209,7 +209,7 @@ aleatório da sequência:
 
 \iniciocodigo
 @<Declarações de Gerador Aleatório@>+=
-uint64_t _Wrand(struct _Wrng *);
+uint32_t _Wrand(struct _Wrng *);
 @
 \fimcodigo
 
@@ -389,8 +389,8 @@ será:
 #ifdef W_RNG_MERSENNE_TWISTER
 struct _Wrng{
   char w[_W * _N / 8]; // Todos N valores gerados, cada um com _W bits
-  int index;         // Onde colocar próximo valor: (index * _W / 8)
-  bool require_new;  // Se temos que gerar novo valor
+  int index;          // Onde colocar próximo valor: (index * _W / 8)
+  short offset;       // 32-bit offset for the return value 
   @<Declaração de Mutex@>
 };
 #endif
@@ -437,9 +437,9 @@ aux[3] = (aux[3] << 18);
 memcpy(&tmp, aux, 16);
 result = result ^ tmp;
 rng -> index = (rng -> index + 1) % _N;
-rng -> require_new = false;
+rng -> offset = (rng -> offset + 1) % 4;
 ((unsigned __int128 *) (rng -> w))[rng -> index] = result;
-return (uint64_t) (result >> 64);
+return (uint32_t) (result >> 96);
 #else
 #error "Mersenne Twister unsupported without 128 bit integer support." 
 #endif
@@ -453,16 +453,17 @@ integrada à função que efetivamente retorna o próimo número:
 \iniciocodigo
 @<Definição de \_Wrand@>=
 #ifdef W_RNG_MERSENNE_TWISTER
-uint64_t _Wrand(struct _Wrng *rng){
-  if(rng -> require_new){
+uint32_t _Wrand(struct _Wrng *rng){
+  if(rng -> offset == 0){
     @<SFMT: Computa próximo elemento@>
   }
   else{
     unsigned __int128 result;
-    rng -> require_new = true;
     result = ((unsigned __int128 *) (rng -> w))[rng -> index];
-    rng -> index = (rng -> index + 1) % _N;
-    return (result << 64) >> 64;
+    if(rng -> offset == 3)
+      rng -> index = (rng -> index + 1) % _N;
+    rng -> offset = (rng -> offset + 1) % 4;
+    return (uint32_t) ((result << (32 * (rng -> offset - 1))) >> 96);
   }
 }
 #endif
@@ -485,7 +486,7 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), uint32_t seed){
     for(i = 1; i < _N * 4; i ++){
       p[i] = 1812433253UL * (p[i - 1] ^ (p[i - 1] >> 30)) + i;
     }
-    new -> require_new = true;
+    new -> offset = 0;
     new -> index = 0;
     @<SFMT: Garante Período@>
   }

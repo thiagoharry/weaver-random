@@ -3,7 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <bsd/stdlib.h> 
+#include <bsd/stdlib.h>
+#include <stdint.h>
+#include <inttypes.h>
 #if defined(_WIN32)
 #include <windows.h>
 #endif
@@ -93,17 +95,18 @@ void test_mersenne_twister(void){
     assert("SFMT initialization works as in reference code", equal);
     equal = true;
   }
-  for(i = 0; i < 1000; i ++){
+  for(i = 0; i < 8; i ++){
     uint64_t a, b;
     a = _Wrand(my_rng);
-    b = sfmt_genrand_uint64(&ref_rng);
-    printf("%lu %lu\n", a, b);
+    b = sfmt_genrand_uint32(&ref_rng);
+    printf("My: %lx Ref: %lx\n", a, b);
     if(a != b){
       equal = false;
-      break;
+      //break;
     }
   }
   assert("SFMT generates same numbers as in reference", equal);
+  _Wdestroy_rng(my_rng);
   free(my_rng);
 }
 #endif
