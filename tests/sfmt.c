@@ -200,7 +200,6 @@ inline static void do_recursion(w128_t *r, w128_t *a, w128_t *b,
 {
     w128_t x;
     w128_t y;
-
     lshift128(&x, a, SFMT_SL2);
     rshift128(&y, c, SFMT_SR2);
     r->u[0] = a->u[0] ^ x.u[0] ^ ((b->u[0] >> SFMT_SR1) & SFMT_MSK1)
@@ -214,63 +213,7 @@ inline static void do_recursion(w128_t *r, w128_t *a, w128_t *b,
 }
 #endif
 
-#if (!defined(HAVE_ALTIVEC)) && (!defined(HAVE_SSE2)) && (!defined(HAVE_NEON))
-/**
- * This function fills the user-specified array with pseudorandom
- * integers.
- *
- * @param sfmt SFMT internal state
- * @param array an 128-bit array to be filled by pseudorandom numbers.
- * @param size number of 128-bit pseudorandom numbers to be generated.
- */
-inline static void gen_rand_array(sfmt_t * sfmt, w128_t *array, int size) {
-    int i, j;
-    w128_t *r1, *r2;
 
-    r1 = &sfmt->state[SFMT_N - 2];
-    r2 = &sfmt->state[SFMT_N - 1];
-    for (i = 0; i < SFMT_N - SFMT_POS1; i++) {
-        do_recursion(&array[i], &sfmt->state[i], &sfmt->state[i + SFMT_POS1], r1, r2);
-        r1 = r2;
-        r2 = &array[i];
-    }
-    for (; i < SFMT_N; i++) {
-        do_recursion(&array[i], &sfmt->state[i],
-                     &array[i + SFMT_POS1 - SFMT_N], r1, r2);
-        r1 = r2;
-        r2 = &array[i];
-    }
-    for (; i < size - SFMT_N; i++) {
-        do_recursion(&array[i], &array[i - SFMT_N],
-                     &array[i + SFMT_POS1 - SFMT_N], r1, r2);
-        r1 = r2;
-        r2 = &array[i];
-    }
-    for (j = 0; j < 2 * SFMT_N - size; j++) {
-        sfmt->state[j] = array[j + size - SFMT_N];
-    }
-    for (; i < size; i++, j++) {
-        do_recursion(&array[i], &array[i - SFMT_N],
-                     &array[i + SFMT_POS1 - SFMT_N], r1, r2);
-        r1 = r2;
-        r2 = &array[i];
-        sfmt->state[j] = array[i];
-    }
-}
-#endif
-
-void sfmt_fill_array64(sfmt_t * sfmt, uint64_t *array, int size) {
-//    assert(sfmt->idx == SFMT_N32);
-  //  assert(size % 2 == 0);
-    //assert(size >= SFMT_N64);
-
-    gen_rand_array(sfmt, (w128_t *)array, size / 2);
-    sfmt->idx = SFMT_N32;
-
-#if defined(BIG_ENDIAN64) && !defined(ONLY64)
-    swap((w128_t *)array, size /2);
-#endif
-}
 
 #if !defined(HAVE_SSE2) && !defined(HAVE_ALTIVEC) && !defined(HAVE_NEON)
 /**
@@ -285,12 +228,14 @@ void sfmt_gen_rand_all(sfmt_t * sfmt) {
     r1 = &sfmt->state[SFMT_N - 2];
     r2 = &sfmt->state[SFMT_N - 1];
     for (i = 0; i < SFMT_N - SFMT_POS1; i++) {
+      //printf("(%d %d %d %d)\n", i, i + SFMT_POS1, SFMT_N - 2, SFMT_N - 1);
         do_recursion(&sfmt->state[i], &sfmt->state[i],
                      &sfmt->state[i + SFMT_POS1], r1, r2);
         r1 = r2;
         r2 = &sfmt->state[i];
     }
     for (; i < SFMT_N; i++) {
+      //printf("(%d %d %d %d)\n", i, i + SFMT_POS1 - SFMT_N, SFMT_N - 2, SFMT_N - 1);
         do_recursion(&sfmt->state[i], &sfmt->state[i],
                      &sfmt->state[i + SFMT_POS1 - SFMT_N], r1, r2);
         r1 = r2;
@@ -510,7 +455,7 @@ void sfmt_init_gen_rand(sfmt_t * sfmt, uint32_t seed) {
 inline static uint32_t sfmt_genrand_uint32(sfmt_t * sfmt) {
     uint32_t r;
     uint32_t * psfmt32 = &sfmt->state[0].u[0];
-
+    //xprintf("\ngenrand\n");
     if (sfmt->idx >= SFMT_N32) {
         sfmt_gen_rand_all(sfmt);
         sfmt->idx = 0;

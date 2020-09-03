@@ -318,15 +318,16 @@ bool _Wdestroy_rng(struct _Wrng *rng){
 
 \subsecao{2.1. SFMT}
 
-O SFMT é o ``SIMD-Oriented Fast Mersenne Twister''. Ele tem esse nome
-porque o período deste gerador é projetado para ter valores bastante
-grandes, que são primos de Mersenne ($2^n-1$ para algum $n$ inteiro
-positivo). As implementações mais usadas deste algoritmo suportam
-períodos de $2^{19937}-1$ sem que haja repetição. O que é um exagero
-para qualquer caso de uso, inclusive o uso em jogos eletrônicos. Já o
-``SIMD'' é um conjunto de instruções para valores de 128 bits que CPUs
-mais recentes suportam. Tais instruções, se suportadas, são usadas
-para tornar o desempenho mais rápido.
+O SFMT é o ``SIMD-Oriented Fast Mersenne Twister'', proposto pela
+primeira vez em [Saito, 2006]. Ele tem esse nome porque o período
+deste gerador é projetado para ter valores bastante grandes, que são
+primos de Mersenne ($2^n-1$ para algum $n$ inteiro positivo). As
+implementações mais usadas deste algoritmo suportam períodos de
+$2^{19937}-1$ sem que haja repetição. O que é um exagero para qualquer
+caso de uso, inclusive o uso em jogos eletrônicos. Já o ``SIMD'' é um
+conjunto de instruções para valores de 128 bits que CPUs mais recentes
+suportam. Tais instruções, se suportadas, são usadas para tornar o
+desempenho mais rápido.
 
 Como geradores de números randômicos são na prática tão rápidos, algo
 que mpacta muito na velocidade de sua geração é a necessidade de
@@ -376,21 +377,17 @@ Cada vez que geramos um novo número, temos que fazer a atualização
 $w_0 \leftarrow w_1$, $w_1 \leftarrow w_2$ e assim por diante. Mas
 podemos evitar ter que fazer tantas atribuições ou cópia mantendo
 apenas uma variável com o índice de qual deverá ser o próximo elemento
-a ser modificado de nossa sequência fixa de \monoespaco{N}
-valores. Além disso, como queremos uma função que retorne 64 bits, mas
-nosso gerador funciona com valores de 128 bits, então precisaremos de
-uma variável booleana para dizer se devemos retornar o restante de um
-valor já gerado ou se devemos gerar um novo valor e retornar seus
-primeiros 64 bits. Sendo assim, o formato de nossa estrutura de RNG
-será:
+a ser retornado pelo nosso gerador. por meio dele saberemos qual a
+posição do próximo elemento de $(w_0, \ldots, w_{156})$ a ser
+esquecido e substituído por um novo. Sendo assim, o formato de nossa
+estrutura de RNG será:
 
 \iniciocodigo
 @<Estrutura RNG@>=
 #ifdef W_RNG_MERSENNE_TWISTER
 struct _Wrng{
   char w[_W * _N / 8]; // Todos N valores gerados, cada um com _W bits
-  int index;          // Onde colocar próximo valor: (index * _W / 8)
-  short offset;       // 32-bit offset for the return value 
+  int offset;         // Index for the next 32-bit value to be returned
   @<Declaração de Mutex@>
 };
 #endif
@@ -408,25 +405,25 @@ por uma matriz em $\mathbb{F}_2$) por meio da seguintes operações:
 #ifdef __SIZEOF_INT128__
 unsigned __int128 result, tmp;
 uint32_t aux[4];
-int i;
-result = ((unsigned __int128 *) (rng -> w))[rng -> index];
+int i, index = rng -> offset / 4;
+result = ((unsigned __int128 *) (rng -> w))[index];
 result = result << 8;
-result = result ^ ((unsigned __int128 *) (rng -> w))[rng -> index];
-i = (rng -> index + 122) % _N;
-aux[0] = (uint32_t) ((unsigned __int128 *) (rng -> w))[i];
+result = result ^ ((unsigned __int128 *) (rng -> w))[index];
+i = (index + 122) % _N;
+aux[0] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 0);
 aux[1] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 1);
 aux[2] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 2);
 aux[3] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 3);
-i = (rng -> index + _N - 2) % _N;
-result = result ^ (((unsigned __int128 *) (rng -> w))[i] >> 8);
-aux[0] = (aux[0] >> 11) & 0xBFFFFFF6;
-aux[1] = (aux[1] >> 11) & 0xBFFAFFFF;
-aux[2] = (aux[2] >> 11) & 0xDDFECB7F;
-aux[3] = (aux[3] >> 11) & 0xDFFFFFEF;
+aux[0] = (aux[0] >> 11) & 0xDFFFFFEF; // 0xBFFFFFF6
+aux[1] = (aux[1] >> 11) & 0xDDFECB7F; // 0xBFFAFFFF
+aux[2] = (aux[2] >> 11) & 0xBFFAFFFF; // 0xDDFECB7F
+aux[3] = (aux[3] >> 11) & 0xBFFFFFF6; // 0xDFFFFFEF
 memcpy(&tmp, aux, 16);
 result = result ^ tmp;
-i = (rng -> index + _N - 1) % _N;
-aux[0] = (uint32_t) ((unsigned __int128 *) (rng -> w))[i];
+i = (index + _N - 2) % _N;
+result = result ^ (((unsigned __int128 *) (rng -> w))[i] >> 8);
+i = (index + _N - 1) % _N;
+aux[0] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 0);
 aux[1] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 1);
 aux[2] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 2);
 aux[3] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 3);
@@ -436,10 +433,7 @@ aux[2] = (aux[2] << 18);
 aux[3] = (aux[3] << 18);
 memcpy(&tmp, aux, 16);
 result = result ^ tmp;
-rng -> index = (rng -> index + 1) % _N;
-rng -> offset = (rng -> offset + 1) % 4;
-((unsigned __int128 *) (rng -> w))[rng -> index] = result;
-return (uint32_t) (result >> 96);
+((unsigned __int128 *) (rng -> w))[index] = result;
 #else
 #error "Mersenne Twister unsupported without 128 bit integer support." 
 #endif
@@ -448,23 +442,19 @@ return (uint32_t) (result >> 96);
 
 Essa geração de um próximo valor pseudo-randômico $w_i$ à partir de
 $w_{i-1}$, $w_{i-2}$, $w_{i-N}$ e $w_{i-34}$ precisa ser então
-integrada à função que efetivamente retorna o próimo número:
+integrada à função que efetivamente retorna o próximo número:
 
 \iniciocodigo
 @<Definição de \_Wrand@>=
 #ifdef W_RNG_MERSENNE_TWISTER
 uint32_t _Wrand(struct _Wrng *rng){
-  if(rng -> offset == 0){
+  uint32_t ret;
+  if(rng -> offset % 4 == 0){
     @<SFMT: Computa próximo elemento@>
   }
-  else{
-    unsigned __int128 result;
-    result = ((unsigned __int128 *) (rng -> w))[rng -> index];
-    if(rng -> offset == 3)
-      rng -> index = (rng -> index + 1) % _N;
-    rng -> offset = (rng -> offset + 1) % 4;
-    return (uint32_t) ((result << (32 * (rng -> offset - 1))) >> 96);
-  }
+  ret = ((uint32_t *) (rng -> w))[rng -> offset];
+  rng -> offset = (rng -> offset + 1) % (_W * _N / 32);
+  return ret;
 }
 #endif
 @
@@ -487,7 +477,6 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), uint32_t seed){
       p[i] = 1812433253UL * (p[i - 1] ^ (p[i - 1] >> 30)) + i;
     }
     new -> offset = 0;
-    new -> index = 0;
     @<SFMT: Garante Período@>
   }
   return new;
@@ -535,6 +524,32 @@ O arquivo com o código-fonte de nossas funções terá a seguinte forma:
 @
 \fimcodigo
 
+\secao{3. Testes de Qualidade}
+
+\subsecao{3.1. Teste de Chi-Quadrado}
+
+Este teste é mencionado em [Knuth, 1998]. Ele consiste em simular a
+rolagem de dois dados de seis faces e obter a soma dos resultados em
+ambos. Após repetir isso por um número suficiente de vezes, o número
+de vezes que o número 2 e 12 é obtido não deve ser muito diferente de
+1/36, o número 3 e 11 não deve ser muito mais raro que 1/18 das vezes
+e assim por diante. Mas da mesma forma que não devemos obter uma
+quantidade muito longe do esperado neste teste, também não devemos
+receber uma quantidade precisa demais para atestar a qualidade do
+gerador.
+
+Simular rolagens de dados é uma forma importante de testar um gerador
+a ser usado em jogos. Primeiro porque uma aplicação possível para o
+nosso gerador pode ser justamente a simulação de dados. Uma segunda
+aplicação poderia ser a implementação fiel de um sistema de RPG de
+mesa que utiliza dados. Um exemplo é o sistema de ``Dungeons and
+Dragons'' onde existe uma magia ``Meteor Swarm'' onde o dano é
+calculado obtendo a soma de 20 lançamentos de dados de 6 faces.
+
+Um teste que acrescentaremos à nossa suíte é então simular o
+lançamento do dano do ``Meteor Swarm''alguns milhões de vezes checando
+se o resultado obtido não é excessivamente longe ou perto demais da
+distribuição idealizada por meio da técnica do Chi-Quadrado.
 
 \secao{Referências}
 
@@ -545,5 +560,6 @@ volume 27, edição 2, p. 97--111}
 Seminumerical Algorithms'', Addison-Wesley Professional, terceira
 edição.}
 
+\referencia{Saito, M.; Matsumoto M. (2006) ``SIMD-oriented fast Mersenne Twister: a 128-bit pseudorandom number generator'', Monte Carlo and Quasi-Monte Carlo Methods, Springer, p. 607--622}.
 
 \fim
