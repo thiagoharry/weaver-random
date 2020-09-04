@@ -546,10 +546,29 @@ mesa que utiliza dados. Um exemplo é o sistema de ``Dungeons and
 Dragons'' onde existe uma magia ``Meteor Swarm'' onde o dano é
 calculado obtendo a soma de 20 lançamentos de dados de 6 faces.
 
-Um teste que acrescentaremos à nossa suíte é então simular o
-lançamento do dano do ``Meteor Swarm''alguns milhões de vezes checando
-se o resultado obtido não é excessivamente longe ou perto demais da
-distribuição idealizada por meio da técnica do Chi-Quadrado.
+Contudo, fazer a simulação de tantos lançamentos de dados para testar
+a qualidade do gerador não é viável. Primeiro porque o número de
+simulações de lançamentos feitos para obter uma medida confiável
+aumenta exponencialmente com o número de dados usados, sendo
+recomendado lançar um número de vezes tal que o resultado menos
+provável possível tenha uma esperança de receber 5 resultados (segundo
+Knuth). E segundo porque quanto mais dados e medidas fazendo, maiores
+serão as chances de que um gerador falhe no teste, já que ele não é
+exatamente a mesma coisa que um dado. Qualquer gerador
+pseudo-randômico como os que usamos acaba uma hora falhando, já que os
+seus números gerados não são realmente independentes. Um gerador bom
+apenas consegue simular mais lançamentos antes de finalmente falhar.
+
+Dito isso, o teste que realizamos foi simular lançamento de dados de 6
+faces. Para isso lemos continuamente os bits fornecidos pelo gerador
+de três em três. Em seguida, repetimos o teste do Chi-Quadrado três
+vezes. Se em uma delas obtivermos $p > 99\%$ ou $p < 1\%$, o teste
+falha. Se duas vezes tivermos $p> 95\%$ ou $p < 5\%$, o teste também
+falha. Fizemos isso para a soma de 1, 2 e 3 dados. Os resultados
+foram:
+
+Dados    1   2    3    
+SFMT:  092 085  017
 
 \secao{Referências}
 

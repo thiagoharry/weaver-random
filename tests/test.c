@@ -122,6 +122,7 @@ int roll_dice(struct _Wrng *rng){
       else
 	ret = (last_value_returned >> bits_consummed);
       last_value_returned = _Wrand(rng); // Get new value
+      //arc4random_buf(&last_value_returned, 4);
       ret = (ret << (32 - bits_consummed));
       ret += (last_value_returned % (3 - (32 - bits_consummed)));
       bits_consummed = (3 - (32 - bits_consummed)); // Read what you need
@@ -163,17 +164,18 @@ void test_chi_square1(void){
     double V;
     for(i = 0; i < 6; i ++)
       counter[i] = 0;
-    for(i = 0; i < 600; i ++)
+    for(i = 0; i < 30; i ++)
       counter[roll_dice(my_rng) - 1] ++;
     for(i = 0; i < 6; i ++)
       sum += (counter[i] * counter[i] * inv_prob[i]);
-    V = sum / 600.0;
-    V -= 600.0;
-    if(V < 0.8721 || V > 16.81){
+    V = sum / 30.0;
+    V -= 30.0;
+    //printf("V=%f\n", V);
+    if(V < 0.5543 || V > 15.09){
       penalty += 2;
       break;
     }
-    else if(V < 1.635 || V > 12.59){
+    else if(V < 1.1415 || V > 11.07){
       penalty ++;
       if(penalty >= 2)
 	break;
@@ -183,23 +185,24 @@ void test_chi_square1(void){
   penalty = 0;
   for(j = 0; j < 3; j ++){
     int counter[11];
-    int inv_prob[11] = {36, 18, 12, 9, 36, 6, 36, 9, 12, 18, 36};
-    int inv_deno[11] = {1, 1, 1, 1, 5, 1, 5, 1, 1, 1, 1};
-    int i, sum = 0;
-    double V;
+    double mult[11] = {36.0, 18.0, 12.0, 9.0, 7.2, 6.0, 7.2, 9.0, 12.0, 18.0, 36.0};
+    int i;
+    double V, sum = 0;
     for(i = 0; i < 11; i ++)
-      counter[i] = 0;
-    for(i = 0; i < 360; i ++)
+    counter[i] = 0;
+    for(i = 0; i < 180; i ++)
       counter[(roll_dice(my_rng) + roll_dice(my_rng)) - 2] ++;
-    for(i = 0; i < 11; i ++)
-      sum += ((counter[i] * counter[i] * inv_prob[i]) / inv_deno[i]);
-    V = sum / 360.0;
-    V -= 360.0;
-    if(V < 3.053 || V > 24.72){
+    for(i = 0; i < 11; i ++){
+      sum += (mult[i] * (counter[i] * counter[i]));
+    }
+    V = sum / 180.0;
+    V -= 180.0;
+    //printf("V=%f\n", V);
+    if(V < 2.558 || V > 23.21){
       penalty += 2;
       break;
     }
-    else if(V < 4.575 || V > 19.68){
+    else if(V < 3.940 || V > 18.31){
       penalty ++;
       if(penalty >= 2)
 	break;
@@ -209,28 +212,29 @@ void test_chi_square1(void){
   penalty = 0;
   for(j = 0; j < 3; j ++){
     int counter[16];
-    int inv_deno[16] = {1, 3, 6, 10, 15, 21, 25, 27, 27, 25, 21, 15, 10, 6,
-			3, 1};
+    double mult[16] = {216.0, 72.0, 36.0, 21.6, 14.4, 10.285714285714286,
+		       8.64, 8.0, 8.0, 8.64, 10.285714285714286, 14.4, 21.6,
+		       36.0, 72.0, 216.0};
     int i, sum = 0;
     double V;
     for(i = 0; i < 16; i ++)
       counter[i] = 0;
-    for(i = 0; i < 2160; i ++)
+    for(i = 0; i < 1080; i ++)
       counter[(roll_dice(my_rng) + roll_dice(my_rng) + roll_dice(my_rng))
 	      - 3] ++;
     for(i = 0; i < 16; i ++)
-      sum += ((counter[i] * counter[i] * 216) / inv_deno[i]);
-    V = sum / 2160.0;
-    V -= 2160.0;
+      sum += (mult[i] * (counter[i] * counter[i]));
+    V = sum / 1080.0;
+    V -= 1080.0;
     //printf("V=%f\n", V);
     //for(i = 0; i < 16; i ++)
     //  printf(" %d ", counter[i]);
     //printf("\n");
-    if(V < 5.812 || V > 32.00){
+    if(V < 5.229 || V > 30.58){
       penalty += 2;
       break;
     }
-    else if(V < 7.962 || V > 26.30){
+    else if(V < 7.261 || V > 25.00){
       penalty ++;
       if(penalty >= 2)
 	break;
@@ -245,7 +249,7 @@ int main(int argc, char **argv){
 #if defined(W_RNG_MERSENNE_TWISTER)
   test_mersenne_twister();
 #endif
-  printf("The following tests should fail rarely: \n");
+  printf("The following tests can fail. Lesser fails are better: \n");
   test_chi_square1();
   imprime_resultado();
   return 0;
