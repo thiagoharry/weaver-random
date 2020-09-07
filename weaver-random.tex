@@ -152,7 +152,7 @@ extern "C" {
 #endif
 #include <stdint.h>
 #include <stdbool.h>
-#if !defined(W_RNG_MERSENNE_TWISTER)
+#if !defined(W_RNG_MERSENNE_TWISTER) && !defined(W_RNG_XORSHIRO)
 #define W_RNG_MERSENNE_TWISTER
 #endif
 @<Constantes RNG@>
@@ -504,6 +504,94 @@ valores gerados:
   if(parity != 1)
     p[0] = p[0] ^ 1;
 }
+@
+\fimcodigo
+
+\subsecao{2.2. Xorshiro256**}
+
+Este é um gerador mais recente que o SFMT e tem como objetivo manter a
+mesma qualidade, fazê-lo passar em testes estatísticos adicionais, ser
+rápido e não precisar de um estado tão grande assim. O Xorshiro é um
+gerador linear, mas que combina sua operação linear com operações
+não-lineares adicionais para que sua linearidade não o penalize em
+testes estatísticos.
+
+Basicamente ele precisa armazenar apenas os últimos 4 valores gerados
+e realizar sobre eles a seguinte operação para gerar o próximo valor:
+
+\iniciocodigo
+@<Xorshiro: Computa próximo elemento@>=
+{
+  uint64_t tmp = rng -> w[0] + rng -> w[3];
+  rng -> result = ((tmp << 23) | (tmp >> 41)) + rng -> w[0];
+} 
+@
+\fimcodigo
+
+O estado formado por apenas 4 números é atualizado após a geração de
+cada elemento. Isso é feito como na definição de função abaixo:
+
+\iniciocodigo
+@<Definição de \_Wrand@>=
+#ifdef W_RNG_XORSHIRO
+uint32_t _Wrand(struct _Wrng *rng){
+uint32_t ret;
+  if(rng -> offset % 2 == 0){
+    uint64_t t = rng -> w[1] << 17;
+    @<Xorshiro: Computa próximo elemento@>
+    // Atualiza estado:
+    rng -> w[2] ^= rng -> w[0];
+    rng -> w[3] ^= rng -> w[1];
+    rng -> w[1] ^= rng -> w[2];
+    rng -> w[0] ^= rng -> w[3];
+    rng -> w[2] ^= t;
+    rng -> w[3] = ((rng -> w[3] << 45) | (rng -> w[3] >> 19));
+  }
+  ret = (uint32_t) ((rng -> result) >> (32 * rng -> offset));
+  rng -> offset = (rng -> offset + 1) % 2;
+  return ret;
+}
+#endif
+@
+\fimcodigo
+
+A estrutura do gerador de números aleatórios Xorshiro então possui
+apenas os últimos 4 valores de estado e o último valor de 64 bits a
+ser retornado. Como nosso gerador só retorna números de 32 bits,
+podemos aproveitar um mesmo valor gerado para retornar duas vezes:
+
+\iniciocodigo
+@<Estrutura RNG@>=
+#ifdef W_RNG_XORSHIRO
+struct _Wrng{
+  uint64_t w[4];        // Valores de estado
+  uint32_t result; // Last returned value
+  int offset;      // If we have pending bits in result 
+  @<Declaração de Mutex@>
+};
+#endif
+@
+\fimcodigo
+
+Por fim, a inicialização do gerador Xorshiro** será:
+
+\iniciocodigo
+@<Definição de \_Wcreate\_rng@>=
+#ifdef W_RNG_XORSHIRO
+struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), uint32_t seed){
+  int i;
+  struct _Wrng *new = (struct _Wrng *) allocator(sizeof(struct _Wrng));
+  if(new != NULL){
+    uint32_t *p = (uint32_t *) (new -> w);
+    p[0] = seed;
+    for(i = 1; i < 8; i ++)
+      p[i] = 1812433253UL * (p[i - 1] ^ (p[i - 1] >> 30)) + i;
+    new -> offset = 0;
+    new -> result = 0;
+  }
+  return new;
+}
+#endif
 @
 \fimcodigo
 

@@ -29,6 +29,33 @@ size_t count_utf8_code_points(const char *s) {
     return count;
 }
 
+void quality(char *descricao, float valor){
+  char pontos[72], *s = descricao;
+  size_t tamanho_string = 0;
+  int i;
+  while(*s)
+    tamanho_string += (*s++ & 0xC0) != 0x80;
+  pontos[0] = ' ';
+  for(i = 1; i < 71 - tamanho_string; i ++)
+    pontos[i] = '.';
+  pontos[i] = '\0';
+  numero_de_testes ++;
+  printf("%s%s", descricao, pontos);
+#if defined(__unix__) && !defined(__EMSCRIPTEN__)
+  if(valor > 0.6666666){
+    printf("\e[32m[%03d%%]\033[0m\n", (int) (valor*100));
+  }
+  else if(valor > 0.333333333){
+    printf("\e[1;33m[%03d%%]\033[0m\n", (int) (valor*100));
+  }
+  else{
+    printf("\033[0;31m[%03d%%]\033[0m\n", (int) (valor*100));
+  }
+#else
+  printf("[%03d\%]\n", (int) (valor*100));
+#endif
+}
+
 void assert(char *descricao, bool valor){
   char pontos[72], *s = descricao;
   size_t tamanho_string = 0;
@@ -66,9 +93,7 @@ void imprime_resultado(void){
 
 /* Globais */
 
-#if defined(W_RNG_MERSENNE_TWISTER)
 uint32_t seed;
-#endif
 
 void initialize_seed(void){
   arc4random_buf(&seed, 4);
@@ -154,102 +179,119 @@ int roll_dice(struct _Wrng *rng){
 }
 
 void test_chi_square1(void){
-  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);  
+  int j, k;
+  int success, total = 10000;
   int penalty = 0;
-  int j;
-  for(j = 0; j < 3; j ++){
-    int counter[6];
-    int inv_prob[6] = {6, 6, 6, 6, 6, 6};
-    int i, sum = 0;
-    double V;
-    for(i = 0; i < 6; i ++)
-      counter[i] = 0;
-    for(i = 0; i < 30; i ++)
-      counter[roll_dice(my_rng) - 1] ++;
-    for(i = 0; i < 6; i ++)
-      sum += (counter[i] * counter[i] * inv_prob[i]);
-    V = sum / 30.0;
-    V -= 30.0;
-    //printf("V=%f\n", V);
-    if(V < 0.5543 || V > 15.09){
-      penalty += 2;
-      break;
-    }
-    else if(V < 1.1415 || V > 11.07){
-      penalty ++;
-      if(penalty >= 2)
+  success = 0;
+  for(k = 0; k < total; k ++){
+    penalty = 0;
+    for(j = 0; j < 3; j ++){
+      int counter[6];
+      int inv_prob[6] = {6, 6, 6, 6, 6, 6};
+      int i, sum = 0;
+      double V;
+      for(i = 0; i < 6; i ++)
+	counter[i] = 0;
+      for(i = 0; i < 30; i ++)
+	counter[roll_dice(my_rng) - 1] ++;
+      for(i = 0; i < 6; i ++)
+	sum += (counter[i] * counter[i] * inv_prob[i]);
+      V = sum / 30.0;
+      V -= 30.0;
+      //printf("V=%f\n", V);
+      if(V < 0.5543 || V > 15.09){
+	penalty += 2;
 	break;
+      }
+      else if(V < 1.1415 || V > 11.07){
+	penalty ++;
+	if(penalty >= 2)
+	  break;
+      }
     }
+    if(penalty < 2)
+      success ++;
+    //assert("Chi-square test simulating 1 dice", (penalty < 2));
   }
-  assert("Chi-square test simulating 1 dice", (penalty < 2));
-  penalty = 0;
-  for(j = 0; j < 3; j ++){
-    int counter[11];
-    double mult[11] = {36.0, 18.0, 12.0, 9.0, 7.2, 6.0, 7.2, 9.0, 12.0, 18.0, 36.0};
-    int i;
-    double V, sum = 0;
-    for(i = 0; i < 11; i ++)
-    counter[i] = 0;
-    for(i = 0; i < 180; i ++)
-      counter[(roll_dice(my_rng) + roll_dice(my_rng)) - 2] ++;
-    for(i = 0; i < 11; i ++){
-      sum += (mult[i] * (counter[i] * counter[i]));
-    }
-    V = sum / 180.0;
-    V -= 180.0;
-    //printf("V=%f\n", V);
-    if(V < 2.558 || V > 23.21){
-      penalty += 2;
-      break;
-    }
-    else if(V < 3.940 || V > 18.31){
-      penalty ++;
-      if(penalty >= 2)
+  quality("Quality of chi-square test simulating 1 dice", (double) success / (double) total);
+  success = 0;
+  for(k = 0; k < total; k ++){
+    penalty = 0;
+    for(j = 0; j < 3; j ++){
+      int counter[11];
+      double mult[11] = {36.0, 18.0, 12.0, 9.0, 7.2, 6.0, 7.2, 9.0, 12.0, 18.0, 36.0};
+      int i;
+      double V, sum = 0;
+      for(i = 0; i < 11; i ++)
+	counter[i] = 0;
+      for(i = 0; i < 180; i ++)
+	counter[(roll_dice(my_rng) + roll_dice(my_rng)) - 2] ++;
+      for(i = 0; i < 11; i ++){
+	sum += (mult[i] * (counter[i] * counter[i]));
+      }
+      V = sum / 180.0;
+      V -= 180.0;
+      //printf("V=%f\n", V);
+      if(V < 2.558 || V > 23.21){
+	penalty += 2;
 	break;
+      }
+      else if(V < 3.940 || V > 18.31){
+	penalty ++;
+	if(penalty >= 2)
+	  break;
+      }
     }
+    if(penalty < 2)
+      success ++;
   }
-  assert("Chi-square test simulating 2 dices", (penalty < 2));
-  penalty = 0;
-  for(j = 0; j < 3; j ++){
-    int counter[16];
-    double mult[16] = {216.0, 72.0, 36.0, 21.6, 14.4, 10.285714285714286,
-		       8.64, 8.0, 8.0, 8.64, 10.285714285714286, 14.4, 21.6,
-		       36.0, 72.0, 216.0};
-    int i, sum = 0;
-    double V;
-    for(i = 0; i < 16; i ++)
-      counter[i] = 0;
-    for(i = 0; i < 1080; i ++)
-      counter[(roll_dice(my_rng) + roll_dice(my_rng) + roll_dice(my_rng))
-	      - 3] ++;
-    for(i = 0; i < 16; i ++)
-      sum += (mult[i] * (counter[i] * counter[i]));
-    V = sum / 1080.0;
-    V -= 1080.0;
-    //printf("V=%f\n", V);
-    //for(i = 0; i < 16; i ++)
-    //  printf(" %d ", counter[i]);
-    //printf("\n");
-    if(V < 5.229 || V > 30.58){
-      penalty += 2;
-      break;
-    }
-    else if(V < 7.261 || V > 25.00){
-      penalty ++;
-      if(penalty >= 2)
+  quality("Quality of chi-square test simulating 2 dices", (double) success / (double) total);
+  success = 0;
+  for(k = 0; k < total; k ++){
+    penalty = 0;
+    for(j = 0; j < 3; j ++){
+      int counter[16];
+      double mult[16] = {216.0, 72.0, 36.0, 21.6, 14.4, 10.285714285714286,
+			 8.64, 8.0, 8.0, 8.64, 10.285714285714286, 14.4, 21.6,
+			 36.0, 72.0, 216.0};
+      int i, sum = 0;
+      double V;
+      for(i = 0; i < 16; i ++)
+	counter[i] = 0;
+      for(i = 0; i < 1080; i ++)
+	counter[(roll_dice(my_rng) + roll_dice(my_rng) + roll_dice(my_rng))
+		- 3] ++;
+      for(i = 0; i < 16; i ++)
+	sum += (mult[i] * (counter[i] * counter[i]));
+      V = sum / 1080.0;
+      V -= 1080.0;
+      //printf("V=%f\n", V);
+      //for(i = 0; i < 16; i ++)
+      //  printf(" %d ", counter[i]);
+      //printf("\n");
+      if(V < 5.229 || V > 30.58){
+	penalty += 2;
 	break;
+      }
+      else if(V < 7.261 || V > 25.00){
+	penalty ++;
+	if(penalty >= 2)
+	  break;
+      }
     }
+    if(penalty < 2)
+      success ++;
   }
-  assert("Chi-square test simulating 3 dices", (penalty < 2));
+  quality("Quality of chi-square test simulating 3 dices", (double) success / (double) total);
 }
 
 int main(int argc, char **argv){
   initialize_seed();
-  printf("Starting tests. Seed: %lu\n\n", (long unsigned int) seed);
 #if defined(W_RNG_MERSENNE_TWISTER)
+  printf("Starting MERSENNE TWISTER tests. Seed: %lu\n\n", (long unsigned int) seed);
   test_mersenne_twister();
 #endif
-  printf("The following tests can fail. Lesser fails are better: \n");
   test_chi_square1();
   imprime_resultado();
   return 0;
