@@ -261,10 +261,10 @@ de \monoespaco{rng}, podemos inicializar seu mutex com:
 \iniciocodigo
 @<Inicialização de Mutex@>=
 #if defined(__unix__) || defined(__APPLE__)
-pthread_mutex_init(rng -> mutex, NULL);
+pthread_mutex_init(&(rng -> mutex), NULL);
 #endif
 #if defined(_WIN32)
-InitializeCriticalSection(rng -> mutex);
+InitializeCriticalSection(&(rng -> mutex));
 #endif
 @
 \fimcodigo
@@ -274,10 +274,10 @@ Para pedirmos o uso de um Mutex, fazemos:
 \iniciocodigo
 @<Mutex:WAIT@>=
 #if defined(__unix__) || defined(__APPLE__)
-pthread_mutex_lock(rng -> mutex);
+pthread_mutex_lock(&(rng -> mutex));
 #endif
 #if defined(_WIN32)
-EnterCriticalSection(rng -> mutex);
+EnterCriticalSection(&(rng -> mutex));
 #endif
 @
 \fimcodigo
@@ -287,10 +287,10 @@ E o código para liberarmos o uso do Mutex:
 \iniciocodigo
 @<Mutex:SIGNAL@>=
 #if defined(__unix__) || defined(__APPLE__)
-pthread_mutex_unlock(rng -> mutex);
+pthread_mutex_unlock(&(rng -> mutex));
 #endif
 #if defined(_WIN32)
-LeaveCriticalSection(rng -> mutex);
+LeaveCriticalSection(&(rng -> mutex));
 #endif
 @
 \fimcodigo
@@ -449,11 +449,13 @@ integrada à função que efetivamente retorna o próximo número:
 #ifdef W_RNG_MERSENNE_TWISTER
 uint32_t _Wrand(struct _Wrng *rng){
   uint32_t ret;
+  @<Mutex:WAIT@>
   if(rng -> offset % 4 == 0){
     @<SFMT: Computa próximo elemento@>
   }
   ret = ((uint32_t *) (rng -> w))[rng -> offset];
   rng -> offset = (rng -> offset + 1) % (_W * _N / 32);
+  @<Mutex:SIGNAL@>
   return ret;
 }
 #endif
@@ -469,17 +471,18 @@ como inicializar o estado do gerador à partir da semente de 32 bits:
 #ifdef W_RNG_MERSENNE_TWISTER
 struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), uint32_t seed){
   int i;
-  struct _Wrng *new = (struct _Wrng *) allocator(sizeof(struct _Wrng));
-  if(new != NULL){
-    uint32_t *p = (uint32_t *) (new -> w);
+  struct _Wrng *rng = (struct _Wrng *) allocator(sizeof(struct _Wrng));
+  if(rng != NULL){
+    uint32_t *p = (uint32_t *) (rng -> w);
     p[0] = seed;
     for(i = 1; i < _N * 4; i ++){
       p[i] = 1812433253UL * (p[i - 1] ^ (p[i - 1] >> 30)) + i;
     }
-    new -> offset = 0;
+    rng -> offset = 0;
     @<SFMT: Garante Período@>
   }
-  return new;
+  @<Inicialização de Mutex@>
+  return rng;
 }
 #endif
 @
@@ -522,8 +525,8 @@ e realizar sobre eles a seguinte operação para gerar o próximo valor:
 \iniciocodigo
 @<Xorshiro: Computa próximo elemento@>=
 {
-  uint64_t tmp = rng -> w[0] + rng -> w[3];
-  rng -> result = ((tmp << 23) | (tmp >> 41)) + rng -> w[0];
+  uint64_t tmp = rng -> w[1] * 5;
+  rng -> result = ((tmp << 7) | (tmp >> 57)) * 9;
 } 
 @
 \fimcodigo
@@ -535,7 +538,8 @@ cada elemento. Isso é feito como na definição de função abaixo:
 @<Definição de \_Wrand@>=
 #ifdef W_RNG_XORSHIRO
 uint32_t _Wrand(struct _Wrng *rng){
-uint32_t ret;
+  uint32_t ret;
+  @<Mutex:WAIT@>
   if(rng -> offset % 2 == 0){
     uint64_t t = rng -> w[1] << 17;
     @<Xorshiro: Computa próximo elemento@>
@@ -549,6 +553,7 @@ uint32_t ret;
   }
   ret = (uint32_t) ((rng -> result) >> (32 * rng -> offset));
   rng -> offset = (rng -> offset + 1) % 2;
+  @<Mutex:SIGNAL@>
   return ret;
 }
 #endif
@@ -565,7 +570,7 @@ podemos aproveitar um mesmo valor gerado para retornar duas vezes:
 #ifdef W_RNG_XORSHIRO
 struct _Wrng{
   uint64_t w[4];        // Valores de estado
-  uint32_t result; // Last returned value
+  uint64_t result; // Last returned value
   int offset;      // If we have pending bits in result 
   @<Declaração de Mutex@>
 };
@@ -580,16 +585,17 @@ Por fim, a inicialização do gerador Xorshiro** será:
 #ifdef W_RNG_XORSHIRO
 struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), uint32_t seed){
   int i;
-  struct _Wrng *new = (struct _Wrng *) allocator(sizeof(struct _Wrng));
-  if(new != NULL){
-    uint32_t *p = (uint32_t *) (new -> w);
+  struct _Wrng *rng = (struct _Wrng *) allocator(sizeof(struct _Wrng));
+  if(rng != NULL){
+    uint32_t *p = (uint32_t *) (rng -> w);
     p[0] = seed;
     for(i = 1; i < 8; i ++)
       p[i] = 1812433253UL * (p[i - 1] ^ (p[i - 1] >> 30)) + i;
-    new -> offset = 0;
-    new -> result = 0;
+    rng -> offset = 0;
+    rng -> result = 0;
   }
-  return new;
+  @<Inicialização de Mutex@>
+  return rng;
 }
 #endif
 @

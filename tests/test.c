@@ -19,6 +19,8 @@ int numero_de_testes = 0, acertos = 0, falhas = 0;
 
 #ifdef W_RNG_MERSENNE_TWISTER
 #include "sfmt.c"
+#elif defined(W_RNG_XORSHIRO)
+#include "xorshiro.c"
 #endif
 
 size_t count_utf8_code_points(const char *s) {
@@ -134,6 +136,83 @@ void test_mersenne_twister(void){
   free(my_rng);
 }
 #endif
+
+#if defined(W_RNG_XORSHIRO)
+void test_xorshiro(void){
+  bool equal = true;
+  int i;
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
+  for(i = 0; i < 4; i ++)
+    s[i] = my_rng -> w[i];
+  for(i = 0; i < 1000; i ++){
+    uint64_t a, b;
+    _Wrand(my_rng);
+    a = my_rng -> result;
+    _Wrand(my_rng);
+    b = next();
+    if(a != b){
+      equal = false;
+      break;
+    }
+  }
+  assert("Xorshiro** generates same numbers as in reference", equal);
+  _Wdestroy_rng(my_rng);
+  free(my_rng);
+}
+#endif
+
+// Thread test
+#define THREAD_NUMBER 1000
+#if defined(_WIN32)
+DWORD _WINAPI thread_function(void *my_rng){
+#else
+void *thread_function(void *my_rng){
+#endif
+  struct _Wrng *rng = (struct _Wrng *) my_rng;
+  int i;
+  for(i = 0; i < 5; i ++)
+    _Wrand(rng);
+#if defined(_WIN32)
+  return 0;
+#else
+  return NULL;
+#endif
+}
+ 
+void test_multithread(void){
+  uint32_t a, b;
+  int i;
+#if defined(_WIN32)
+  HANDLE thread[THREAD_NUMBER];
+#else
+  pthread_t thread[THREAD_NUMBER];
+#endif
+  struct _Wrng *my_rng1 = _Wcreate_rng(malloc, seed);
+  struct _Wrng *my_rng2 = _Wcreate_rng(malloc, seed);
+  for(i = 0; i < THREAD_NUMBER; i ++){
+#if defined(_WIN32)
+    thread[i] = CreateThread(NULL, 0, thread_function, my_rng1, 0, NULL);
+#else
+    pthread_create(&(thread[i]), NULL, thread_function, my_rng1);
+#endif
+  }
+  for(i = 0; i < THREAD_NUMBER; i ++){
+#if defined(_WIN32)
+    _WaitForSingleObject(thread[i], INFINITE);
+#else
+    pthread_join(thread[i], NULL);  
+#endif
+  }
+  for(i = 0; i < 5 * THREAD_NUMBER; i ++)
+    _Wrand(my_rng2);
+  a = _Wrand(my_rng1);
+  b = _Wrand(my_rng2);
+  assert("RNG works with multiple threads", a == b);
+  _Wdestroy_rng(my_rng1);
+  free(my_rng1);
+  _Wdestroy_rng(my_rng2);
+  free(my_rng2);
+}
 
 ///////////////////////////// Simulates a 6-side dice rolling
 static uint32_t last_value_returned = 0;
@@ -284,6 +363,8 @@ void test_chi_square1(void){
       success ++;
   }
   quality("Quality of chi-square test simulating 3 dices", (double) success / (double) total);
+  _Wdestroy_rng(my_rng);
+  free(my_rng);
 }
 
 int main(int argc, char **argv){
@@ -291,7 +372,11 @@ int main(int argc, char **argv){
 #if defined(W_RNG_MERSENNE_TWISTER)
   printf("Starting MERSENNE TWISTER tests. Seed: %lu\n\n", (long unsigned int) seed);
   test_mersenne_twister();
+#elif defined(W_RNG_XORSHIRO)
+  printf("Starting XORSHIRO** tests. Seed: %lu\n\n", (long unsigned int) seed);
+  test_xorshiro();
 #endif
+  test_multithread();
   test_chi_square1();
   imprime_resultado();
   return 0;
