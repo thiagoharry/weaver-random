@@ -152,7 +152,8 @@ extern "C" {
 #endif
 #include <stdint.h>
 #include <stdbool.h>
-#if !defined(W_RNG_MERSENNE_TWISTER) && !defined(W_RNG_XORSHIRO)
+#if !defined(W_RNG_MERSENNE_TWISTER) && !defined(W_RNG_XORSHIRO) && \
+!defined(W_RNG_PCG)
 #define W_RNG_MERSENNE_TWISTER
 #endif
 @<Constantes RNG@>
@@ -480,8 +481,8 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), uint32_t seed){
     }
     rng -> offset = 0;
     @<SFMT: Garante Período@>
+    @<Inicialização de Mutex@>
   }
-  @<Inicialização de Mutex@>
   return rng;
 }
 #endif
@@ -593,14 +594,76 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), uint32_t seed){
       p[i] = 1812433253UL * (p[i - 1] ^ (p[i - 1] >> 30)) + i;
     rng -> offset = 0;
     rng -> result = 0;
+    @<Inicialização de Mutex@>
   }
-  @<Inicialização de Mutex@>
   return rng;
 }
 #endif
 @
 \fimcodigo
 
+\subsecao{2.3. PCG (\italico{Permuted Congruential Generator})}
+
+O terceiro gerador que será fornecido como opção é o PCG. Este gerador
+usa ainda menos bits de estado que o Xorshiro:
+
+\iniciocodigo
+@<Estrutura RNG@>=
+#ifdef W_RNG_PCG
+struct _Wrng{
+  uint64_t state;
+  uint64_t increment; // Sempre deve ser ímpar
+  @<Declaração de Mutex@>
+};
+#endif
+@
+\fimcodigo
+
+Usamos para ele a mesma inicialização que para os outros geradores
+dada uma semente de 32 bits. Mas temos que garantir que o valor de
+incremento que usaremos será sempre ímpar:
+
+\iniciocodigo
+@<Definição de \_Wcreate\_rng@>=
+#ifdef W_RNG_PCG
+struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), uint32_t seed){
+  struct _Wrng *rng = (struct _Wrng *) allocator(sizeof(struct _Wrng));
+  if(rng != NULL){
+    uint32_t *p = (uint32_t *) &(rng -> state);
+    uint32_t *pinc = (uint32_t *) &(rng -> increment);
+    p[0] = seed;
+    p[1] = 1812433253UL * (p[0] ^ (p[0] >> 30)) + 1;
+    pinc[0] = 1812433253UL * (p[1] ^ (p[1] >> 30)) + 2;
+    pinc[1] = 1812433253UL * (pinc[0] ^ (pinc[0] >> 30)) + 3;
+    pinc[1] |= 1u;
+    @<Inicialização de Mutex@>
+  }
+  return rng;
+}
+#endif
+@
+\fimcodigo
+
+E por fim, geramos um novo número aleatório por meio do seguinte código:
+
+\iniciocodigo
+@<Definição de \_Wrand@>=
+#ifdef W_RNG_PCG
+uint32_t _Wrand(struct _Wrng *rng){
+  uint32_t ret, xorshifted, rot;
+  @<Mutex:WAIT@>
+  uint64_t oldstate = rng -> state;
+  // Advance internal state
+  rng -> state = oldstate * 6364136223846793005ULL + rng -> increment;
+  xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
+  rot = oldstate >> 59u;
+  ret = (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
+  @<Mutex:SIGNAL@>
+  return ret;
+}
+#endif
+@
+\fimcodigo
 
 \subsecao{2.X. Estrutura Final do Arquivo}
 
