@@ -152,10 +152,7 @@ extern "C" {
 #endif
 #include <stdint.h>
 #include <stdbool.h>
-#if !defined(W_RNG_MERSENNE_TWISTER) && !defined(W_RNG_XORSHIRO) && \
-!defined(W_RNG_PCG)
-#define W_RNG_MERSENNE_TWISTER
-#endif
+@<Escolhe Algoritmo Padrão do RNG@>
 @<Constantes RNG@>
 @<Estrutura RNG@>
 @<Declarações de Gerador Aleatório@>
@@ -331,20 +328,19 @@ suportam. Tais instruções, se suportadas, são usadas para tornar o
 desempenho mais rápido.
 
 Como geradores de números randômicos são na prática tão rápidos, algo
-que mpacta muito na velocidade de sua geração é a necessidade de
+que impacta muito na velocidade de sua geração é a necessidade de
 invocar funções. Há duas formas de mitigar isso: gerar uma grande
 quantidade de números em um buffer, que deve ser preenchido novamente
 quando eles acabarem, ou pedir para o compilador tornar a
-função \italico{inline\/}. Geralmente a primeira opção é
-preferida. Contudo, o momento de preencher o buffer de números será
-quando a função acabará tendo uma queda de desempenho inesperada. Em
-programas interativos, geralmente é melhor que as funções tenham um
-comportamento mais fixo. É melhor garantir uma taxa de atualização de
-tela constante do que garantir uma taxa de atualização mais rápida, só
-que com quedas de desempenho ocasionais. Sendo assim, iremos preferir
-usar a função do modo \italico{inline\/}. Isso não é um grande
-problema devido aos algoritmos de geração de números pseudo-randômico
-na prática serem bastante simples.
+função \italico{inline\/}. Aqui não usaremos nenhuma das duas
+otimizações. A primeira delas torna o tempo médio de execução muito
+menor, mas aumenta o desvio padrão do tempo de execução, algo que
+queremos evitar em programas interativos. A segunda não será usada por
+não fazer diferença: a API que planejamos para o uso destas funções
+deverá passar ponteiros para a função geradora de números aleatórios,
+e ela tipicamente será executada por meio de tais ponteiros. Portanto,
+o código tipicamente são seria expandido durante a compilação e uma
+função seria invocada de qualquer forma.
 
 O SFMT funciona por meio da seguinte recursão onde cada valor $X_i$ tem
 $w$ bits:
@@ -665,7 +661,7 @@ uint32_t _Wrand(struct _Wrng *rng){
 @
 \fimcodigo
 
-\subsecao{2.X. Estrutura Final do Arquivo}
+\subsecao{2.4. Estrutura Final do Arquivo}
 
 O arquivo com o código-fonte de nossas funções terá a seguinte forma:
 
@@ -753,6 +749,64 @@ uma da outra. Contudo, todos os algoritmos que implementamos em nossa
 biblioteca possuem aproximadamente o mesmo desempenho neste teste e
 demonstram ser melhores que algoritmos mais ingênuos, como o da
 biblioteca padrão.
+
+\secao{3. Medida de Desempenho}
+
+Após medir o desempenho dos algoritmos implementados, o seguinte
+resultado foi obtido (as colunas mostram o tempo de geração de cada
+número e o desvio padrão em nanossegundos e o tamanho da esrutura que
+armazena o gerador):
+
+\vbox{%A forma mais gseral de remover espaçamento entre linhas:
+\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
+\def\linha{\noalign{\hrule}}
+\def\hidewidth{\hskip-1000pt plus 1fill}
+\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
+\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
+\hfil#& \vrule#& \hfil#\hfil& \vrule#&
+\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
+&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+Tempo ($\mu$s)\hidewidth&&
+\omit\hidewidth Desvio ($\mu$s)\hidewidth&&Tamanho (bytes)&\cr\linha
+&&SFMT&&783&&124&&2544&\cr\linha
+&&Xorshiro**&&786&&127&&88&\cr\linha
+&&PCG&&786&&149&&56&\cr\linha}}
+
+O teste foi feito em um computador com processador Intel Pentium B980
+dual core com 2,40 GHz e 4 GB de memória RAM. O Sistema Operacional
+foi o Ubuntu 18.04.4. O teste foi compilado com o GCC 7.5.0.
+
+\secao{4. Conclusão}
+
+Apesar de gastar muito mais memória que as outras implementações, a
+versão utilizada do Mersenne Twister (o SFMT) ainda é muito mais
+rápida que o dos algoritmos mais recentes utilizados, mesmo que não
+utilizemos algumas otimizações comuns (tornar a função ``inline'' ou
+gerar antecipadamente muitos valores em um buffer). Isso possivelmente
+se deve às suas operações feitas para serem rápidas em processadores
+com registradores e operações de 128 bits. Contudo, é importante notar
+que nós só implementamos uma versão do Mersenne Twister que usa tais
+recursos e também usa uma extensão da linguagem C com variáveis de 128
+bits. Caso estas opções não estejam disponíveis, temos que recorrer a
+outro algoritmo.
+
+Por causa disso, e como não há uma grande diferença de qualidade entre
+os algoritmos, em nossa biblioteca usaremos o SFMT se possível, e se
+não for possível, usemos o PCG por se mostrar ligeiramente mais rápido
+e menor que o Xorshiro:
+
+\iniciocodigo
+@<Escolhe Algoritmo Padrão do RNG@>=
+#if !defined(W_RNG_MERSENNE_TWISTER) && !defined(W_RNG_XORSHIRO) && \
+!defined(W_RNG_PCG)
+#ifdef __SIZEOF_INT128__
+#define W_RNG_MERSENNE_TWISTER
+#else
+#define W_RNG_PCG
+#endif
+#endif
+@
+\fimcodigo
 
 \secao{Referências}
 

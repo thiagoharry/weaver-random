@@ -17,14 +17,14 @@ test: src tests/test.c src/random.c
 	./test_sfmt
 	./test_xorshiro
 	./test_pcg
-#web-test:
-#	emcc  tests/test.c src/memory.c -s WASM=1 -o doc/test/test.html
-#web-benchmark:
-#	emcc src/memory.c benchmark/benchmark.c  -s WASM=1 -o doc/benchmark/bench.html
-#benchmark: src benchmark/benchmark.c src/memory.c
-#	${CC} ${FLAGS} src/memory.c benchmark/benchmark.c -o bench -lm 
-#	./bench
+benchmark: src tests/test.c src/random.c
+	${CC} ${FLAGS} -DW_RNG_PCG -pthread benchmark/benchmark.c src/random.c -o bench_pcg -lbsd -lm
+	${CC} ${FLAGS} -DW_RNG_MERSENNE_TWISTER -pthread benchmark/benchmark.c src/random.c -o bench_sfmt -lbsd -lm
+	${CC} ${FLAGS} -DW_RNG_XORSHIRO -pthread benchmark/benchmark.c src/random.c -o bench_xorshiro -lbsd -lm
+	./bench_sfmt
+	./bench_xorshiro
+	./bench_pcg
 clean:
 	rm -f *~ *.core *.scn *.dvi *.idx *.log tests/*~ test bench benchmark/*~
 distclean: clean
-	rm -f test weaver-memory-manager.pdf src/*
+	rm -f test_* weaver-memory-manager.pdf src/*
