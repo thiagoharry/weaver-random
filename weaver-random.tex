@@ -354,12 +354,12 @@ X_{i+n}=g(X_i, \ldots, X_{i+n-1})
 $$
 
 A função $g$ funciona concatenando toda a sua entrada na forma de um
-vetor binário em $\mathbb{F}_2$ com $wn$ elementos e multiplicando por
-uma matriz $A\in\mathbb{F}_2^{wn\times w}$. Na prática essa matriz é
+vetor binário em $F_2$ com $wn$ elementos e multiplicando por
+uma matriz $A\in F_2^{wn\times w}$. Na prática essa matriz é
 escolhida de modo a ser simples e assim não precisar ser representada
 ou armazenada. Ao invés disso ela simplesmente existirá na forma de
 rotações de bits, operações AND e operações de XOR (os quais
-correspondem à multiplicação e adição no corpo $\mathbb{F}$_2).
+correspondem à multiplicação e adição no corpo $F_2$).
 
 Essa descrição genérica descreve toda a família de geradores Mersenne
 Twister. Para o caso específico do SFMT, os valores que escolheremos
@@ -399,7 +399,7 @@ O padrão ISO da linguagem C não suporta variáveis que garantidamente
 tenham 128 bits. Contudo, versões recentes do compilador GCC e Clang
 as suportam. Usando elas, podemos computar a função $g$ que computa o
 próximo elemento da sequência (ou seja, a multiplicação de nosso vetor
-por uma matriz em $\mathbb{F}_2$) por meio da seguintes operações:
+por uma matriz em $F_2$) por meio da seguintes operações:
 
 \iniciocodigo
 @<SFMT: Computa próximo elemento@>=
@@ -685,47 +685,74 @@ O arquivo com o código-fonte de nossas funções terá a seguinte forma:
 
 \subsecao{3.1. Teste de Chi-Quadrado}
 
-Este teste é mencionado em [Knuth, 1998]. Ele consiste em simular a
-rolagem de dois dados de seis faces e obter a soma dos resultados em
-ambos. Após repetir isso por um número suficiente de vezes, o número
-de vezes que o número 2 e 12 é obtido não deve ser muito diferente de
-1/36, o número 3 e 11 não deve ser muito mais raro que 1/18 das vezes
-e assim por diante. Mas da mesma forma que não devemos obter uma
-quantidade muito longe do esperado neste teste, também não devemos
-receber uma quantidade precisa demais para atestar a qualidade do
-gerador.
+Este teste é mencionado em [Knuth, 1998]. Como um exemplo dele,
+podemos simular a rolagem de dois dados de seis faces e obter a soma
+dos resultados em ambos. Após repetir isso por um número suficiente de
+vezes, o número de vezes que o número 2 e 12 é obtido não deve ser
+muito diferente de 1/36, o número 3 e 11 não deve ser muito mais raro
+que 1/18 das vezes e assim por diante. Mas da mesma forma que não
+devemos obter uma quantidade muito longe do esperado neste teste,
+também não devemos receber uma quantidade precisa demais para atestar
+a qualidade do gerador. Além disso, não precisamos nos ater somente ao
+caso de dois dados lançados, podemos usar mais dados.
 
-Simular rolagens de dados é uma forma importante de testar um gerador
-a ser usado em jogos. Primeiro porque uma aplicação possível para o
-nosso gerador pode ser justamente a simulação de dados. Uma segunda
-aplicação poderia ser a implementação fiel de um sistema de RPG de
-mesa que utiliza dados. Um exemplo é o sistema de ``Dungeons and
-Dragons'' onde existe uma magia ``Meteor Swarm'' onde o dano é
-calculado obtendo a soma de 20 lançamentos de dados de 6 faces.
+Este teste é relevante porque simular o lançamento de dados é
+importante para uma biblioteca a ser usada para fazer jogos
+eletrônicos. Criar um simulador de dados é uma palicação
+possível. Oura possibilidade é implementar em um jogo as regras de
+jogos de RPG de mesa, como ``Dungeons and Dragons'', onde muitas vezes
+o dano causado por um ataque é obtido somando números de vários
+lançamentos de dados.
 
-Contudo, fazer a simulação de tantos lançamentos de dados para testar
-a qualidade do gerador não é viável. Primeiro porque o número de
-simulações de lançamentos feitos para obter uma medida confiável
-aumenta exponencialmente com o número de dados usados, sendo
-recomendado lançar um número de vezes tal que o resultado menos
-provável possível tenha uma esperança de receber 5 resultados (segundo
-Knuth). E segundo porque quanto mais dados e medidas fazendo, maiores
-serão as chances de que um gerador falhe no teste, já que ele não é
-exatamente a mesma coisa que um dado. Qualquer gerador
-pseudo-randômico como os que usamos acaba uma hora falhando, já que os
-seus números gerados não são realmente independentes. Um gerador bom
-apenas consegue simular mais lançamentos antes de finalmente falhar.
+Para o teste, simulamos a rolagem de um dado de seis faces gerando
+números aleatórios à partir de uma semente gerada
+pelo \monoespaco{arc2random} fornecido pelo sistema. A sequência de
+números de 32 bits gerados é interpretada como uma sequência de
+números de 3 bits. Se o número lido for entre 0 e 5, interpretamos
+como um valor entre 1 e 6 gerado pelo dado. Se obtivermos um 6 ou 7,
+armazenamos como bit de ``sobra'' um 0 no caso do 6 ou um 1 no caso do
+7. Quando acumulamos 3 bis de sobra, esvaziamos os bits de sobra
+acumulados, mas o interpretamos como um novo número de 3 bits usando a
+mesma regra acima.
 
-Dito isso, o teste que realizamos foi simular lançamento de dados de 6
-faces. Para isso lemos continuamente os bits fornecidos pelo gerador
-de três em três. Em seguida, repetimos o teste do Chi-Quadrado três
-vezes. Se em uma delas obtivermos $p > 99\%$ ou $p < 1\%$, o teste
-falha. Se duas vezes tivermos $p> 95\%$ ou $p < 5\%$, o teste também
-falha. Fizemos isso para a soma de 1, 2 e 3 dados. Os resultados
-foram:
+Em seguida, como sugerido por [Knuth, 1998], usamos o teste
+Chi-Quadrado para avaliar o resultado de simulação de dados. Avaliamos
+o resultado da soma de 1, 2 e 3 lançamentos simultâneos de dados,
+fazendo um número de lançamentos tal que o valor esperado para o
+resultado mais improvável das somas é sempre 5. E repetimos isso três
+vezes. Se uma única vez o resultado for muito improvável com $p >
+99\%$ ou $p < 1\%$, assumimos que o teste falhou. Se por duas vezes o
+resultado for algo improvável com $p> 95\%$ ou $p < 5\%$, também
+consideramos uma falha.
 
-Dados    1   2    3    
-SFMT:  092 085  017
+O teste descrito no parágrafo acima é então repetido um total de dez
+mil vezes e uma porcentagem de quantas vezes fomos bem-sucedidos é
+extraída. Este é o resultado para os geradores testados, incluindo o
+gerador de números aleatórios da biblioteca padrão, \monoespaco{rand}:
+
+\vbox{%A forma mais geral de remover espaçamento entre linhas:
+\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
+\def\linha{\noalign{\hrule}}
+\def\hidewidth{\hskip-1000pt plus 1fill}
+\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
+\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
+\hfil#& \vrule#& \hfil#\hfil& \vrule#&
+\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
+&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+1 dado\hidewidth&&
+\omit\hidewidth 2 dados\hidewidth&&3 dados&\cr\linha
+&&\monoespaco{rand}&&91\%&&67\%&&0\%&\cr\linha
+&&SFMT&&92\%&&87\%&&13\%&\cr\linha
+&&Xorshiro**&&92\%&&87\%&&13\%&\cr\linha
+&&PCG&&92\%&&87\%&&13\%&\cr\linha}}
+
+À medida que aumentamos o número de dados e o número de medições,
+torna-se perceptível que não estamos jogando dados de verdade, mas
+gerando uma sequência de valores que não é completamente independente
+uma da outra. Contudo, todos os algoritmos que implementamos em nossa
+biblioteca possuem aproximadamente o mesmo desempenho neste teste e
+demonstram ser melhores que algoritmos mais ingênuos, como o da
+biblioteca padrão.
 
 \secao{Referências}
 

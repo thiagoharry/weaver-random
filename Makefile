@@ -11,8 +11,12 @@ src: weaver-random.tex
 	ctangle weaver-random.tex
 	rm weaver-random.c
 test: src tests/test.c src/random.c
-	${CC} ${FLAGS} -DW_RNG_PCG -pthread tests/test.c src/random.c -o test -lbsd
-	./test
+	${CC} ${FLAGS} -DW_RNG_PCG -pthread tests/test.c src/random.c -o test_pcg -lbsd
+	${CC} ${FLAGS} -DW_RNG_MERSENNE_TWISTER -pthread tests/test.c src/random.c -o test_sfmt -lbsd
+	${CC} ${FLAGS} -DW_RNG_XORSHIRO -pthread tests/test.c src/random.c -o test_xorshiro -lbsd
+	./test_sfmt
+	./test_xorshiro
+	./test_pcg
 #web-test:
 #	emcc  tests/test.c src/memory.c -s WASM=1 -o doc/test/test.html
 #web-benchmark:

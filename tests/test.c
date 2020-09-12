@@ -21,6 +21,8 @@ int numero_de_testes = 0, acertos = 0, falhas = 0;
 #include "sfmt.c"
 #elif defined(W_RNG_XORSHIRO)
 #include "xorshiro.c"
+#elif defined(W_RNG_PCG)
+#include "pcg.c"
 #endif
 
 size_t count_utf8_code_points(const char *s) {
@@ -160,6 +162,30 @@ void test_xorshiro(void){
   free(my_rng);
 }
 #endif
+
+#if defined(W_RNG_PCG)
+void test_pcg(void){
+  bool equal = true;
+  int i;
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
+  pcg32_random_t pcg_rng;
+  pcg_rng.state = my_rng -> state;
+  pcg_rng.inc = my_rng -> increment;
+  for(i = 0; i < 1000; i ++){
+    uint64_t a, b;    
+    a = _Wrand(my_rng);
+    b = pcg32_random_r(&pcg_rng);
+    if(a != b){
+      equal = false;
+      break;
+    }
+  }
+  assert("PCG generates same numbers as in reference", equal);
+  _Wdestroy_rng(my_rng);
+  free(my_rng);
+}
+#endif
+
 
 // Thread test
 #define THREAD_NUMBER 1000
@@ -375,6 +401,9 @@ int main(int argc, char **argv){
 #elif defined(W_RNG_XORSHIRO)
   printf("Starting XORSHIRO** tests. Seed: %lu\n\n", (long unsigned int) seed);
   test_xorshiro();
+#elif defined(W_RNG_PCG)
+  printf("Starting PCG tests. Seed: %lu\n\n", (long unsigned int) seed);
+  test_pcg();
 #endif
   test_multithread();
   test_chi_square1();
