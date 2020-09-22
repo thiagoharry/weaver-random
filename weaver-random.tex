@@ -212,12 +212,13 @@ uint32_t _Wrand(struct _Wrng *);
 \fimcodigo
 
 A última função será apenas para finalizar o uso de um gerador de
-números aleatórios. Ele não poderá mais ser usado depois de
-finalizado:
+números aleatórios. Ela recebe também um ponteiro para função que
+desalocará o gerador (ou NULL). Ele não poderá mais ser usado depois
+de finalizado:
 
 \iniciocodigo
 @<Declarações de Gerador Aleatório@>+=
-bool _Wdestroy_rng(struct _Wrng *);
+bool _Wdestroy_rng(void (*free)(void *), struct _Wrng *);
 @
 \fimcodigo
 
@@ -300,14 +301,17 @@ definir o código dela inteiro aqui:
 
 \iniciocodigo
 @<Definição de \_Wdestroy\_rng@>=
-bool _Wdestroy_rng(struct _Wrng *rng){
+bool _Wdestroy_rng(void (*free)(void *), struct _Wrng *rng){
+  bool ret;
 #if defined(__unix__) || defined(__APPLE__)
-  return pthread_mutex_destroy(&(rng -> mutex));
-#endif
-#if defined(_WIN32)
+  ret = pthread_mutex_destroy(&(rng -> mutex));
+#elif defined(_WIN32)
   DeleteCriticalSection(rng -> mutex);
-  return true; // Sempre é bem-sucedida segundo a documentação
+  ret = true; // Sempre é bem-sucedida segundo a documentação
 #endif
+  if(free != NULL)
+    free(rng);
+  return ret;
 }
 @
 \fimcodigo
@@ -631,7 +635,7 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), uint32_t seed){
     p[1] = 1812433253UL * (p[0] ^ (p[0] >> 30)) + 1;
     pinc[0] = 1812433253UL * (p[1] ^ (p[1] >> 30)) + 2;
     pinc[1] = 1812433253UL * (pinc[0] ^ (pinc[0] >> 30)) + 3;
-    pinc[1] |= 1u;
+    rng -> increment = (rng -> increment | 1);
     @<Inicialização de Mutex@>
   }
   return rng;

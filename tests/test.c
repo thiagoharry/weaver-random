@@ -134,8 +134,7 @@ void test_mersenne_twister(void){
     }
   }
   assert("SFMT generates same numbers as in reference", equal);
-  _Wdestroy_rng(my_rng);
-  free(my_rng);
+  _Wdestroy_rng(free, my_rng);
 }
 #endif
 
@@ -158,8 +157,7 @@ void test_xorshiro(void){
     }
   }
   assert("Xorshiro** generates same numbers as in reference", equal);
-  _Wdestroy_rng(my_rng);
-  free(my_rng);
+  _Wdestroy_rng(free, my_rng);
 }
 #endif
 
@@ -181,8 +179,7 @@ void test_pcg(void){
     }
   }
   assert("PCG generates same numbers as in reference", equal);
-  _Wdestroy_rng(my_rng);
-  free(my_rng);
+  _Wdestroy_rng(free, my_rng);
 }
 #endif
 
@@ -234,10 +231,8 @@ void test_multithread(void){
   a = _Wrand(my_rng1);
   b = _Wrand(my_rng2);
   assert("RNG works with multiple threads", a == b);
-  _Wdestroy_rng(my_rng1);
-  free(my_rng1);
-  _Wdestroy_rng(my_rng2);
-  free(my_rng2);
+  _Wdestroy_rng(free, my_rng1);
+  _Wdestroy_rng(free, my_rng2);
 }
 
 ///////////////////////////// Simulates a 6-side dice rolling
@@ -389,12 +384,29 @@ void test_chi_square1(void){
       success ++;
   }
   quality("Quality of chi-square test simulating 3 dices", (double) success / (double) total);
-  _Wdestroy_rng(my_rng);
-  free(my_rng);
+  _Wdestroy_rng(free, my_rng);
 }
 
+/*void test_kolmogorov_smirnof(void){
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
+  uint32_t i, iterations;
+  int j;
+  const inc = 1;
+  const n = 30;
+  iterations = (4294967295 / inc);
+  for(i = 1; i < iterations; i ++){
+    for(j = 0; j < n; j ++){
+
+    }
+  }
+  _Wdestroy_rng(free, my_rng);
+  }*/
+ 
 int main(int argc, char **argv){
-  initialize_seed();
+  if(argc <= 1)
+    initialize_seed();
+  else
+    seed = strtoull(argv[1], NULL, 10);
 #if defined(W_RNG_MERSENNE_TWISTER)
   printf("Starting MERSENNE TWISTER tests. Seed: %lu\n\n", (long unsigned int) seed);
   test_mersenne_twister();
