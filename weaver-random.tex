@@ -48,13 +48,13 @@
 
 \abstract{This article is an informal survey and analysis of random
 number generators in games. It also contains a random number generator
-described using literary programming.}
+described using literary programming, which is part of Weaver Game Engine.}
 
 \vskip 0.5cm plus 3pt minus 3pt
 
 \resumo{Este artigo é uma pesquisa informal sobre geradores de números
 aleatórios em jogos. Ela também contém um gerador de números aleatórios
-decrito usando programação literária.}
+decrito usando programação literária, o qual faz parte do motor de jogos Weaver.}
 
 \secao{1. Introdução}
 
@@ -152,6 +152,12 @@ extern "C" {
 #endif
 #include <stdint.h>
 #include <stdbool.h>
+#if defined(__unix__) || defined(__APPLE__)
+#include <pthread.h>
+#endif
+#if defined(W_RNG_ISO_C)
+#include <stdlib.h>
+#endif
 @<Escolhe Algoritmo Padrão do RNG@>
 @<Constantes RNG@>
 @<Estrutura RNG@>
@@ -665,7 +671,95 @@ uint32_t _Wrand(struct _Wrng *rng){
 @
 \fimcodigo
 
-\subsecao{2.4. Estrutura Final do Arquivo}
+\subsecao{2.4. Gerador de Números Aleatórios do ISO C}
+
+Ao invés do Mersenne Twister, Xorshiro e PCG, também há um suporte
+para usar o próprio gerador de números aleatórios da biblioteca
+padrão. Este recurso é oferecido para auxiliar em testes e
+comparações. No entanto, isso não é recomendado para uso em
+projetos.
+
+Uma dificuldade inicial é que o gerador padrão não costuma retornar um
+inteiro de 32 bits. Em alguns casos, o valor retornado pode ter apenas
+15 bits (o maior número costuma ser o maior número do
+tipo \monoespaco{int}). Na biblioteca C GNU, o número tem 31
+bits. Sendo assim, para preencher bits restantes temos que invocar
+mais de uma vez a função para obter mais bits. E vamos precisar de um
+valor na nossa estrutura de gerador para armazenar quaisquer bits que
+sobrarem para serem reaproveitados:
+
+\iniciocodigo
+@<Estrutura RNG@>=
+#ifdef W_RNG_ISO_C
+struct _Wrng{
+  int accumulator;     // Some bits accumulated
+  int remaining_bits;  // How many bits we have above
+  int bits;            // How many bits rand() returns
+  @<Declaração de Mutex@>
+};
+#endif
+@
+\fimcodigo
+
+Ao criar este RNG, apenas armazenamos quantos bits a nossa função
+padrão gera e inicializamos a estrutura como tendo 0 bits
+acumulados. Além disso também inicializamos a função usando a semente
+recebida:
+
+\iniciocodigo
+@<Definição de \_Wcreate\_rng@>=
+#ifdef W_RNG_ISO_C
+struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), uint32_t seed){
+  struct _Wrng *rng = (struct _Wrng *) allocator(sizeof(struct _Wrng));
+  if(rng != NULL){
+    unsigned int max = ((unsigned int) RAND_MAX) + 1;
+    rng -> accumulator = 0;
+    rng -> remaining_bits = 0;
+    rng -> bits = 0;
+    while(max > 1){
+      rng -> bits ++;
+      max /= 2;
+    }
+    srand((unsigned int) seed);
+    @<Inicialização de Mutex@>
+  }
+  return rng;
+}
+#endif
+@
+\fimcodigo
+
+Para retornar um novo número pseudo-randômico, primeiro preenchemos os
+bits menos significativos com os bits que temos acumulados. Em
+seguida, com novos valores retornados pela função \monoespaco{rand},
+nós vamos preenchendo valores mais e mais significativos. Se sobrar
+alguns bits, armazenamos ele no estado de nosso gerador:
+
+\iniciocodigo
+@<Definição de \_Wrand@>=
+#ifdef W_RNG_ISO_C
+uint32_t _Wrand(struct _Wrng *rng){
+  uint32_t ret;
+  unsigned int filled_bits, new_value;
+  @<Mutex:WAIT@>
+  ret = rng -> accumulator;
+  filled_bits = rng -> remaining_bits;
+  while(filled_bits < 32){
+    new_value = rand();
+    ret += (new_value << filled_bits);
+    filled_bits += rng -> bits;
+  }
+  rng -> remaining_bits = filled_bits - 32;
+  rng -> accumulator = (new_value >> (rng -> bits - rng -> remaining_bits));
+  @<Mutex:SIGNAL@>
+  return ret;
+}
+#endif
+@
+\fimcodigo
+
+
+\subsecao{2.5. Estrutura Final do Arquivo}
 
 O arquivo com o código-fonte de nossas funções terá a seguinte forma:
 
@@ -802,7 +896,7 @@ e menor que o Xorshiro:
 \iniciocodigo
 @<Escolhe Algoritmo Padrão do RNG@>=
 #if !defined(W_RNG_MERSENNE_TWISTER) && !defined(W_RNG_XORSHIRO) && \
-!defined(W_RNG_PCG)
+!defined(W_RNG_PCG) && !defined(W_RNG_ISO_C)
 #ifdef __SIZEOF_INT128__
 #define W_RNG_MERSENNE_TWISTER
 #else

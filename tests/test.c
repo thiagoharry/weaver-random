@@ -3,14 +3,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <bsd/stdlib.h>
+//#include <bsd/stdlib.h>
 #include <stdint.h>
 #include <inttypes.h>
 #if defined(_WIN32)
 #include <windows.h>
-#endif
-#if defined(__unix__) || defined(__APPLE__)
-#include <pthread.h>
 #endif
 
 #include "../src/random.h"
@@ -416,8 +413,12 @@ int main(int argc, char **argv){
 #elif defined(W_RNG_PCG)
   printf("Starting PCG tests. Seed: %lu\n\n", (long unsigned int) seed);
   test_pcg();
+#elif defined(W_RNG_ISO_C)
+  printf("Starting ISO C RNG tests. Seed: %lu\n\n", (long unsigned int) seed);
 #endif
+#if !defined(W_RNG_ISO_C)
   test_multithread();
+#endif
   test_chi_square1();
   imprime_resultado();
   return 0;

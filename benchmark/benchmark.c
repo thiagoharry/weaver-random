@@ -5,43 +5,40 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <bsd/stdlib.h>
 #include <stdint.h>
 #include <inttypes.h>
 
 #include "../src/random.h"
 
-#ifdef _WIN32
-#include <windows.h>
-#define TIMER_START() { LARGE_INTEGER t1, f, t2, e;		\
-  QueryPerformanceFrequency(&f); QueryPerformanceCounter(&t1);
-#define TIMER_END() QueryPerformanceCounter(&t2); \
-  e.QuadPart = t2.QuadPart - t1.QuadPart; \
-  e.QuadPart *= 1000000; \
-  e.QuadPart /= f.QuadPart; \
-  elapsed = ((double)e.QuadPart) *1e-6; }
-#elif defined(__unix__) && !defined(__EMSCRIPTEN__)
-#include <time.h>
-#define TIMER_START() { struct timespec t1, t2;	\
-  clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t1);
-#define TIMER_END() clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t2);	\
-  elapsed = t2.tv_sec + t2.tv_nsec*1e-9 - t1.tv_sec - t1.tv_nsec*1e-9; }
-#else
+/********************* TIMER **************************************/
+#ifndef __timer_h_
+#define __timer_h_
 #include <sys/time.h>
-#include <sys/resource.h>
-#define TIMER_START() { struct timeval t1, t2; gettimeofday(&t1, NULL);
-#define TIMER_END()  gettimeofday(&t2, NULL);				\
-  elapsed = t2.tv_sec + t2.tv_usec*1e-6 - t1.tv_sec - t1.tv_usec*1e-6; }
+#include <math.h>
+#define N 1000
+unsigned long t_sum = 0;
+unsigned long measures[N];
+int _i = 0;
+#define TIMER_BEGIN() { struct timeval _begin, _end;	\
+  gettimeofday(&_begin, NULL);
+#define TIMER_END() gettimeofday(&_end, NULL);		  \
+  measures[_i] = 1000000 * (_end.tv_sec - _begin.tv_sec) +	\
+    _end.tv_usec - _begin.tv_usec;				\
+  t_sum += measures[_i];					\
+  _i ++;}
+#define TIMER_RESULT() {					\
+    double mean = ((double) t_sum) / ((double) N);			\
+    unsigned long _dif_squared = 0;					\
+    for(_i = 0; _i < N; _i ++)						\
+      _dif_squared += (measures[_i] - mean) * (measures[_i] - mean);	\
+    printf("Mean: %.8fs ± %.8fs\n", 0.000001 * mean,			\
+	   0.000001 * (sqrt(((double) _dif_squared) / (double) (N-1)))); \
+    _i = t_sum = 0;							\
+  }
 #endif
+/********************* TIMER **************************************/
 
-#define ALLOC_SIZE 5*1024
-#define N 100000
-double measures[N];
-double mean;
-double standard_deviation;
-void *malloc_data[N];
-static uint32_t v;
-uint32_t seed;
+static uint32_t seed, v;
 
 void initialize_seed(void){
   arc4random_buf(&seed, 4);
@@ -51,21 +48,12 @@ void initialize_seed(void){
 void measure_rand(void){
   struct _Wrng *rng = _Wcreate_rng(malloc, seed);
   int i;
-  double elapsed, sum = 0, dif_squared = 0;
   for(i = 0; i < N; i ++){
-    TIMER_START();
+    TIMER_BEGIN();
     v = _Wrand(rng);
     TIMER_END();
-    measures[i] = elapsed;
   }
-  for(i = 0; i < N; i ++)
-    sum += measures[i];
-  mean = sum / N;
-  for(i = 0; i < N; i ++)
-    dif_squared += (measures[i] - mean) * (measures[i] - mean);
-  standard_deviation = sqrt(dif_squared / (N - 1));
-  printf("%.15f seconds (%.15f seconds) (%d bytes)\n", mean, standard_deviation,
-	 (int) sizeof(struct _Wrng));
+  TIMER_RESULT();
 }
 
 
@@ -77,6 +65,8 @@ int main(int argc, char **argv){
   printf("XORSHIRO**: ");
 #elif defined(W_RNG_PCG)
   printf("PCG:        ");
+#elif defined(W_RNG_ISO_C)
+  printf("ISO C:      ");
 #endif
 
   measure_rand();
