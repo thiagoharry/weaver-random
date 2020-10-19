@@ -180,7 +180,6 @@ void test_pcg(void){
 }
 #endif
 
-
 // Thread test
 #define THREAD_NUMBER 1000
 #if defined(_WIN32)
@@ -415,8 +414,10 @@ int main(int argc, char **argv){
   test_pcg();
 #elif defined(W_RNG_ISO_C)
   printf("Starting ISO C RNG tests. Seed: %lu\n\n", (long unsigned int) seed);
+#elif defined(W_RNG_CRYPTO)
+  printf("Starting Crypto RNG tests. Seed: %lu\n\n", (long unsigned int) seed);
 #endif
-#if !defined(W_RNG_ISO_C)
+#if !defined(W_RNG_ISO_C) && !defined(W_RNG_CRYPTO)
   test_multithread();
 #endif
   test_chi_square1();

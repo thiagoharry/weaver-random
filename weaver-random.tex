@@ -155,7 +155,7 @@ extern "C" {
 #if defined(__unix__) || defined(__APPLE__)
 #include <pthread.h>
 #endif
-#if defined(W_RNG_ISO_C)
+#if defined(W_RNG_ISO_C) || defined(W_RNG_CRYPTO)
 #include <stdlib.h>
 #endif
 @<Escolhe Algoritmo Padrão do RNG@>
@@ -676,8 +676,10 @@ uint32_t _Wrand(struct _Wrng *rng){
 Ao invés do Mersenne Twister, Xorshiro e PCG, também há um suporte
 para usar o próprio gerador de números aleatórios da biblioteca
 padrão. Este recurso é oferecido para auxiliar em testes e
-comparações. No entanto, isso não é recomendado para uso em
-projetos.
+comparações, mas não é recomendado para uso em projetos. Um dos
+motivos é o fato de ser um gerador reconhecidamente com menos
+qualidade e pior dresempenho. Além disso, ele não irá necessariamente
+funcionar de maneira correta quando usado por meio de threads.
 
 Uma dificuldade inicial é que o gerador padrão não costuma retornar um
 inteiro de 32 bits. Em alguns casos, o valor retornado pode ter apenas
@@ -758,8 +760,67 @@ uint32_t _Wrand(struct _Wrng *rng){
 @
 \fimcodigo
 
+\subsecao{2.5. Gerador Criptograficamente Seguro}
 
-\subsecao{2.5. Estrutura Final do Arquivo}
+O código desta seção será fornecido para ser usado em testes e
+comparações, mas seu uso não é recomendado para uso em outros
+programas. Um dos motivos é o fato dele ignorar a semente que você
+passa. os resultados obtidos com ele não podem ser repetidos passando
+uma mesma semente. Além disso ele tem um desempenho reconhecidamente
+pior que para aplicações não-criptográficas não compensa a
+imprevisibilidade computacional. Por ser uma opção fornecida apenas
+para fins de testes, este gerador é implementado meramente usando a
+função \monoespaco{arc4random} de sistemas BSD.
+
+A estrutura do RNG apenas armazena a sua semente (que nem é usada):
+
+\iniciocodigo
+@<Estrutura RNG@>=
+#ifdef W_RNG_CRYPTO
+struct _Wrng{
+  uint32_t seed;
+  @<Declaração de Mutex@>
+};
+#endif
+@
+\fimcodigo
+
+Na criação do RNG armazenamos a semente ali apenas para evitarmos
+avisos do compilador quanto a um parâmetro sendo ignorado pela função:
+
+\iniciocodigo
+@<Definição de \_Wcreate\_rng@>=
+#ifdef W_RNG_CRYPTO
+struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), uint32_t seed){
+  struct _Wrng *rng = (struct _Wrng *) allocator(sizeof(struct _Wrng));
+  if(rng != NULL){
+    rng -> seed = seed;
+    @<Inicialização de Mutex@>
+  }
+  return rng;
+}
+#endif
+@
+\fimcodigo
+
+O uso do RNG consiste apenas na chamada da
+função \monoespaco{arc4random} do sistema. Em sistemas operacionais
+seguros ele é implementado por meio do gerador ChaCha20, embora ainda
+possam existir sistemas que implementam ele com o algoritmo RC4, que não
+é mais considerado criptograficamente seguro.
+
+\iniciocodigo
+@<Definição de \_Wrand@>=
+#ifdef W_RNG_CRYPTO
+uint32_t _Wrand(struct _Wrng *rng){
+  return arc4random();
+}
+#endif
+@
+\fimcodigo
+
+
+\subsecao{2.6. Estrutura Final do Arquivo}
 
 O arquivo com o código-fonte de nossas funções terá a seguinte forma:
 
@@ -896,7 +957,7 @@ e menor que o Xorshiro:
 \iniciocodigo
 @<Escolhe Algoritmo Padrão do RNG@>=
 #if !defined(W_RNG_MERSENNE_TWISTER) && !defined(W_RNG_XORSHIRO) && \
-!defined(W_RNG_PCG) && !defined(W_RNG_ISO_C)
+!defined(W_RNG_PCG) && !defined(W_RNG_ISO_C) && !defined(W_RNG_CRYPTO)
 #ifdef __SIZEOF_INT128__
 #define W_RNG_MERSENNE_TWISTER
 #else

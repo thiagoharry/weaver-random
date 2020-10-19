@@ -15,7 +15,7 @@
 #define __timer_h_
 #include <sys/time.h>
 #include <math.h>
-#define N 1000
+#define N 100000
 unsigned long t_sum = 0;
 unsigned long measures[N];
 int _i = 0;
@@ -67,6 +67,8 @@ int main(int argc, char **argv){
   printf("PCG:        ");
 #elif defined(W_RNG_ISO_C)
   printf("ISO C:      ");
+#elif defined(W_RNG_CRYPTO)
+  printf("Crypto:     ");
 #endif
 
   measure_rand();
