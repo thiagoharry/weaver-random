@@ -11,11 +11,11 @@ src/random.c: weaver-random.tex
 	ctangle weaver-random.tex
 	rm weaver-random.c
 test: tests/test.c src/random.c
-	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_PCG -pthread tests/test.c src/random.c -o test_pcg
-	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_MERSENNE_TWISTER -pthread tests/test.c src/random.c -o test_sfmt
-	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_XORSHIRO -pthread tests/test.c src/random.c -o test_xorshiro
-	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_ISO_C -pthread tests/test.c src/random.c -o test_iso
-	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_CRYPTO -pthread tests/test.c src/random.c -o test_crypto
+	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_PCG -pthread tests/test.c src/random.c -o test_pcg -lm
+	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_MERSENNE_TWISTER -pthread tests/test.c src/random.c -o test_sfmt -lm
+	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_XORSHIRO -pthread tests/test.c src/random.c -o test_xorshiro -lm
+	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_ISO_C -pthread tests/test.c src/random.c -o test_iso -lm
+	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_CRYPTO -pthread tests/test.c src/random.c -o test_crypto -lm
 	./test_sfmt
 	./test_xorshiro
 	./test_pcg

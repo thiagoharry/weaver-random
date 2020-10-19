@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 //#include <bsd/stdlib.h>
 #include <stdint.h>
 #include <inttypes.h>
@@ -383,20 +384,111 @@ void test_chi_square1(void){
   _Wdestroy_rng(free, my_rng);
 }
 
-/*void test_kolmogorov_smirnof(void){
+void test_equidistribution(void){
   struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
-  uint32_t i, iterations;
-  int j;
-  const inc = 1;
-  const n = 30;
-  iterations = (4294967295 / inc);
-  for(i = 1; i < iterations; i ++){
-    for(j = 0; j < n; j ++){
-
+  uint32_t measures[1000];
+  double Kp[20], Km[20], Kpp, Kmm;
+  int i, j, k;
+  // F(x) = Pr(X <= x)
+  // F_n(x) = (Número de X_1, ... X_n menores que x) / n
+  // K_n+ = \sqrt(n) max_{x \in R} (F_n(x)-F(x)) ; Maior desvio pra cima
+  // K_n- = \sqrt(n) max_{x \in R} (F(x)-F_n(x)) ; Maior desvio pra baixo
+  // Repeating 20 times:
+  for(k = 0; k < 20; k ++){
+    // Measuring 1000 generations:
+    for(i = 0; i < 1000; i ++)
+      measures[i] = _Wrand(my_rng);
+    // Sorting the measures:
+    for(i = 0; i < 1000; i ++){
+      uint32_t tmp, min_value = measures[i];
+      int index = i;
+      for(j = i + 1; j < 1000; j ++){
+	if(measures[j] < min_value){
+	  min_value = measures[j];
+	  index = j;
+	}
+      }
+      tmp = measures[i];
+      measures[i] = measures[index];
+      measures[index] = tmp;
+    }
+    // Computing K_{1000}+:
+    {
+      double max = 0.0;
+      for(i = 0; i < 1000; i ++){
+	double result = (((double) i + 1) / 1000.0) -
+	  ((double) measures[i] / (double) 4294967295ull);
+	if(result > max)
+	  max = result;
+      }
+      Kp[k] = 31.622776601683793 * max; // sqrt(1000) * max(j/1000 - F(X_i))
+    }
+    // Computing K_{1000}-:
+    {
+      double max = 0.0;
+      for(i = 0; i < 1000; i ++){
+	double result =  ((double) measures[i] / (double) 4294967295ull) -
+	  (((double) i) / 1000.0);
+	if(result > max)
+	  max = result;
+      }
+      Km[k] = 31.622776601683793 *max; // sqrt(1000) * max(j/1000 - F(X_i))
     }
   }
+  // Computed the Smirnof-Kolmogorov test over 1000 samples 20
+  // times. Now applying a new Smirnof-Kolmogorov test over these 20 results:
+  // Sorting:
+  for(i = 0; i < 20; i ++){
+    double tmp, min_value = Kp[i];
+    int index = i;
+    for(j = i + 1; j < 20; j ++){
+      if(Kp[j] < min_value){
+	min_value = Kp[j];
+	index = j;
+      }
+    }
+    tmp = Kp[i];
+    Kp[i] = Kp[index];
+    Kp[index] = tmp;
+  }
+  for(i = 0; i < 20; i ++){
+    double tmp, min_value = Km[i];
+    int index = i;
+    for(j = i + 1; j < 20; j ++){
+      if(Km[j] < min_value){
+	min_value = Km[j];
+	index = j;
+      }
+    }
+    tmp = Km[i];
+    Km[i] = Km[index];
+    Km[index] = tmp;
+  }
+  // Computing K_{20}+:
+  {
+    double max = 0.0;
+    for(i = 0; i < 20; i ++){
+      double result = (((double) i + 1) / 20.0) -
+	(1.0 - pow(M_E, -2.0 * Kp[i] * Kp[i]));
+      if(result > max)
+	max = result;
+    }
+    Kpp = 4.47213595499958 * max; // sqrt(20) * max(j/1000 - F(X_i))
+  }
+  // Computing K_{20}-:
+  {
+    double max = 0.0;
+    for(i = 0; i < 20; i ++){
+      double result = (1.0 - pow(M_E, -2.0 * Km[i] * Km[i])) -
+	(((double) i) / 20.0);
+      if(result > max)
+	max = result;
+    }
+    Kmm = 4.47213595499958 * max; // sqrt(20) * max(j/1000 - F(X_i))
+  }
+  printf("DEBUG: K+: %f K=: %f\n", Kpp, Kmm); 
   _Wdestroy_rng(free, my_rng);
-  }*/
+}
  
 int main(int argc, char **argv){
   if(argc <= 1)
@@ -420,7 +512,8 @@ int main(int argc, char **argv){
 #if !defined(W_RNG_ISO_C) && !defined(W_RNG_CRYPTO)
   test_multithread();
 #endif
-  test_chi_square1();
+  test_equidistribution();
+  //test_chi_square1();
   imprime_resultado();
   return 0;
 }
