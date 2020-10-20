@@ -838,52 +838,29 @@ O arquivo com o código-fonte de nossas funções terá a seguinte forma:
 
 \secao{3. Testes de Qualidade}
 
-\subsecao{3.1. Teste de Chi-Quadrado}
+\subsecao{3.1. Teste de Equidistribuição}
 
-Este teste é mencionado em [Knuth, 1998]. Como um exemplo dele,
-podemos simular a rolagem de dois dados de seis faces e obter a soma
-dos resultados em ambos. Após repetir isso por um número suficiente de
-vezes, o número de vezes que o número 2 e 12 é obtido não deve ser
-muito diferente de 1/36, o número 3 e 11 não deve ser muito mais raro
-que 1/18 das vezes e assim por diante. Mas da mesma forma que não
-devemos obter uma quantidade muito longe do esperado neste teste,
-também não devemos receber uma quantidade precisa demais para atestar
-a qualidade do gerador. Além disso, não precisamos nos ater somente ao
-caso de dois dados lançados, podemos usar mais dados.
+Este teste é o primeiro teste empírico sugerido em [Knuth,
+1998]. Nele, nosso objetivo é usar o gerador para simular a geração de
+números entre 0 e 1 e checar se estatisticamente obtemos valores bem
+espalhados ao longo do segmento.
 
-Este teste é relevante porque simular o lançamento de dados é
-importante para uma biblioteca a ser usada para fazer jogos
-eletrônicos. Criar um simulador de dados é uma palicação
-possível. Oura possibilidade é implementar em um jogo as regras de
-jogos de RPG de mesa, como ``Dungeons and Dragons'', onde muitas vezes
-o dano causado por um ataque é obtido somando números de vários
-lançamentos de dados.
+O teste funciona gerando 1000 valores aleatórios de 32 bits e
+aplicando o teste de Smirnov-Kolmogorov para obter medida do quão
+próximo tais números estão espalhados em relação ao esperado. A medida
+é repetida 30 vezes e seus diferentes resultados são novamente
+comparados com a distribuição esperada novamente por meio de
+Smirnov-Kolmogorov. Se o resultado é suficientemente improvável (1\%
+de chance de estar diferente demais ou próximo demais do valor
+idealizado), consideramos que o teste falhou. Se for algo improvável,
+mas não tanto (5\% de chance de estar diferente demais ou próximo
+demais do valor idealizado), damos uma penalidade à esta medida. Após
+3 medidas se tivermos 2 penalidades ou somente 1 falha, consideramos
+uma falha no teste. Por fim, o procedimento acima é repetido 10000
+vezes e assim obtemos uma prcentagem de quantas falhas obtivemos.
 
-Para o teste, simulamos a rolagem de um dado de seis faces gerando
-números aleatórios à partir de uma semente gerada
-pelo \monoespaco{arc2random} fornecido pelo sistema. A sequência de
-números de 32 bits gerados é interpretada como uma sequência de
-números de 3 bits. Se o número lido for entre 0 e 5, interpretamos
-como um valor entre 1 e 6 gerado pelo dado. Se obtivermos um 6 ou 7,
-armazenamos como bit de ``sobra'' um 0 no caso do 6 ou um 1 no caso do
-7. Quando acumulamos 3 bis de sobra, esvaziamos os bits de sobra
-acumulados, mas o interpretamos como um novo número de 3 bits usando a
-mesma regra acima.
-
-Em seguida, como sugerido por [Knuth, 1998], usamos o teste
-Chi-Quadrado para avaliar o resultado de simulação de dados. Avaliamos
-o resultado da soma de 1, 2 e 3 lançamentos simultâneos de dados,
-fazendo um número de lançamentos tal que o valor esperado para o
-resultado mais improvável das somas é sempre 5. E repetimos isso três
-vezes. Se uma única vez o resultado for muito improvável com $p >
-99\%$ ou $p < 1\%$, assumimos que o teste falhou. Se por duas vezes o
-resultado for algo improvável com $p> 95\%$ ou $p < 5\%$, também
-consideramos uma falha.
-
-O teste descrito no parágrafo acima é então repetido um total de dez
-mil vezes e uma porcentagem de quantas vezes fomos bem-sucedidos é
-extraída. Este é o resultado para os geradores testados, incluindo o
-gerador de números aleatórios da biblioteca padrão, \monoespaco{rand}:
+Ao realizar tal experimento usando a semente 2613561388 gerada
+aleatoriamente, obtemos:
 
 \vbox{%A forma mais geral de remover espaçamento entre linhas:
 \baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
@@ -894,20 +871,16 @@ gerador de números aleatórios da biblioteca padrão, \monoespaco{rand}:
 \hfil#& \vrule#& \hfil#\hfil& \vrule#&
 \hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
-1 dado\hidewidth&&
-\omit\hidewidth 2 dados\hidewidth&&3 dados&\cr\linha
-&&\monoespaco{rand}&&91\%&&67\%&&0\%&\cr\linha
-&&SFMT&&92\%&&87\%&&13\%&\cr\linha
-&&Xorshiro**&&92\%&&87\%&&13\%&\cr\linha
-&&PCG&&92\%&&87\%&&13\%&\cr\linha}}
+Sucesso\hidewidth&&
+\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+&&SFMT&&88\%&&Xorshiro**&&89\%&\cr\linha
+&&PCG&&88\%&&ChaCha20&&88\%&\cr\linha}}
 
-À medida que aumentamos o número de dados e o número de medições,
-torna-se perceptível que não estamos jogando dados de verdade, mas
-gerando uma sequência de valores que não é completamente independente
-uma da outra. Contudo, todos os algoritmos que implementamos em nossa
-biblioteca possuem aproximadamente o mesmo desempenho neste teste e
-demonstram ser melhores que algoritmos mais ingênuos, como o da
-biblioteca padrão.
+Todos os algoritmos testados apresentaram desempenho saisfatório neste
+teste mais básico. É importante notar que esse percentua de 88\% é o
+valor esperado, com desempenhos consistentemente muito acima disso
+sendo suspeitos, pois algo realmente aleatório ocasionalmente falha em
+testes estatísticos.
 
 \secao{3. Medida de Desempenho}
 

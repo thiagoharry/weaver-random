@@ -232,261 +232,127 @@ void test_multithread(void){
   _Wdestroy_rng(free, my_rng2);
 }
 
-///////////////////////////// Simulates a 6-side dice rolling
-static uint32_t last_value_returned = 0;
-static int bits_consummed = 32, accumulator = 0, bits_accumulated = 0;
-int roll_dice(struct _Wrng *rng){
-  int ret;
-  for(;;){ // Try until you return 1, 2, 3, 4, 5 or 6
-    if(bits_consummed >= 30){ // Less than 3 bits remaining
-      if(bits_consummed == 32) // Use the remaining bits
-	ret = 0;
-      else
-	ret = (last_value_returned >> bits_consummed);
-      last_value_returned = _Wrand(rng); // Get new value
-      //arc4random_buf(&last_value_returned, 4);
-      ret = (ret << (32 - bits_consummed));
-      ret += (last_value_returned % (3 - (32 - bits_consummed)));
-      bits_consummed = (3 - (32 - bits_consummed)); // Read what you need
-    }
-    else{
-      ret = (last_value_returned >> bits_consummed) % 8;
-      bits_consummed += 3; // Just read 3 bits (number between 0 and 8)
-    }
-    if(ret < 6){ // If 0, 1, 2, 3, 4, 5, then it's a dice value
-      return ret + 1;
-    }
-    else{ // Otherwise, its 6 or 7. This give us 1 bit to accumulate
-      accumulator = (accumulator << 1) + (ret % 2);
-      bits_accumulated ++;
-      if(bits_accumulated == 3){ // With 3 accumulated bits: a new value
-	ret = accumulator;
-	accumulator = 0;
-	bits_accumulated = 0;
-	if(ret < 6){ // If 0, 1, 2, 3, 4, 5, then it's a dice value
-	  return ret + 1;
-	}
-	else{ // Otherwise it's 6 or 7. The accumulator have only 1 bit now
-	  accumulator = ret % 2;
-	  bits_accumulated = 1;
-	}
-      }
-    }
-  }
-}
-
-void test_chi_square1(void){
-  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);  
-  int j, k;
-  int success, total = 10000;
-  int penalty = 0;
-  success = 0;
-  for(k = 0; k < total; k ++){
-    penalty = 0;
-    for(j = 0; j < 3; j ++){
-      int counter[6];
-      int inv_prob[6] = {6, 6, 6, 6, 6, 6};
-      int i, sum = 0;
-      double V;
-      for(i = 0; i < 6; i ++)
-	counter[i] = 0;
-      for(i = 0; i < 30; i ++)
-	counter[roll_dice(my_rng) - 1] ++;
-      for(i = 0; i < 6; i ++)
-	sum += (counter[i] * counter[i] * inv_prob[i]);
-      V = sum / 30.0;
-      V -= 30.0;
-      //printf("V=%f\n", V);
-      if(V < 0.5543 || V > 15.09){
-	penalty += 2;
-	break;
-      }
-      else if(V < 1.1415 || V > 11.07){
-	penalty ++;
-	if(penalty >= 2)
-	  break;
-      }
-    }
-    if(penalty < 2)
-      success ++;
-    //assert("Chi-square test simulating 1 dice", (penalty < 2));
-  }
-  quality("Quality of chi-square test simulating 1 dice", (double) success / (double) total);
-  success = 0;
-  for(k = 0; k < total; k ++){
-    penalty = 0;
-    for(j = 0; j < 3; j ++){
-      int counter[11];
-      double mult[11] = {36.0, 18.0, 12.0, 9.0, 7.2, 6.0, 7.2, 9.0, 12.0, 18.0, 36.0};
-      int i;
-      double V, sum = 0;
-      for(i = 0; i < 11; i ++)
-	counter[i] = 0;
-      for(i = 0; i < 180; i ++)
-	counter[(roll_dice(my_rng) + roll_dice(my_rng)) - 2] ++;
-      for(i = 0; i < 11; i ++){
-	sum += (mult[i] * (counter[i] * counter[i]));
-      }
-      V = sum / 180.0;
-      V -= 180.0;
-      //printf("V=%f\n", V);
-      if(V < 2.558 || V > 23.21){
-	penalty += 2;
-	break;
-      }
-      else if(V < 3.940 || V > 18.31){
-	penalty ++;
-	if(penalty >= 2)
-	  break;
-      }
-    }
-    if(penalty < 2)
-      success ++;
-  }
-  quality("Quality of chi-square test simulating 2 dices", (double) success / (double) total);
-  success = 0;
-  for(k = 0; k < total; k ++){
-    penalty = 0;
-    for(j = 0; j < 3; j ++){
-      int counter[16];
-      double mult[16] = {216.0, 72.0, 36.0, 21.6, 14.4, 10.285714285714286,
-			 8.64, 8.0, 8.0, 8.64, 10.285714285714286, 14.4, 21.6,
-			 36.0, 72.0, 216.0};
-      int i, sum = 0;
-      double V;
-      for(i = 0; i < 16; i ++)
-	counter[i] = 0;
-      for(i = 0; i < 1080; i ++)
-	counter[(roll_dice(my_rng) + roll_dice(my_rng) + roll_dice(my_rng))
-		- 3] ++;
-      for(i = 0; i < 16; i ++)
-	sum += (mult[i] * (counter[i] * counter[i]));
-      V = sum / 1080.0;
-      V -= 1080.0;
-      //printf("V=%f\n", V);
-      //for(i = 0; i < 16; i ++)
-      //  printf(" %d ", counter[i]);
-      //printf("\n");
-      if(V < 5.229 || V > 30.58){
-	penalty += 2;
-	break;
-      }
-      else if(V < 7.261 || V > 25.00){
-	penalty ++;
-	if(penalty >= 2)
-	  break;
-      }
-    }
-    if(penalty < 2)
-      success ++;
-  }
-  quality("Quality of chi-square test simulating 3 dices", (double) success / (double) total);
-  _Wdestroy_rng(free, my_rng);
-}
 
 void test_equidistribution(void){
   struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
   uint32_t measures[1000];
-  double Kp[20], Km[20], Kpp, Kmm;
-  int i, j, k;
+  double Kp[30], Km[30], Kpp, Kmm;
+  int i, j, k, three_tests, all_tests;
+  int penalty, fails = 0;
   // F(x) = Pr(X <= x)
   // F_n(x) = (Número de X_1, ... X_n menores que x) / n
   // K_n+ = \sqrt(n) max_{x \in R} (F_n(x)-F(x)) ; Maior desvio pra cima
   // K_n- = \sqrt(n) max_{x \in R} (F(x)-F_n(x)) ; Maior desvio pra baixo
-  // Repeating 20 times:
-  for(k = 0; k < 20; k ++){
-    // Measuring 1000 generations:
-    for(i = 0; i < 1000; i ++)
-      measures[i] = _Wrand(my_rng);
-    // Sorting the measures:
-    for(i = 0; i < 1000; i ++){
-      uint32_t tmp, min_value = measures[i];
-      int index = i;
-      for(j = i + 1; j < 1000; j ++){
-	if(measures[j] < min_value){
-	  min_value = measures[j];
-	  index = j;
+  for(all_tests = 0; all_tests < 1000; all_tests ++){
+    // Repeating the tests 3 times:
+    for(three_tests = 0; three_tests < 3; three_tests ++){
+      penalty = 0;
+      // Repeating 30 times:
+      for(k = 0; k < 30; k ++){
+	// Measuring 1000 generations:
+	for(i = 0; i < 1000; i ++)
+	  measures[i] = _Wrand(my_rng);
+	// Sorting the measures:
+	for(i = 0; i < 1000; i ++){
+	  uint32_t tmp, min_value = measures[i];
+	  int index = i;
+	  for(j = i + 1; j < 1000; j ++){
+	    if(measures[j] < min_value){
+	      min_value = measures[j];
+	      index = j;
+	    }
+	  }
+	  tmp = measures[i];
+	  measures[i] = measures[index];
+	  measures[index] = tmp;
+	}
+	// Computing K_{1000}+:
+	{
+	  double max = 0.0;
+	  for(i = 0; i < 1000; i ++){
+	    double result = (((double) i + 1) / 1000.0) -
+	      ((double) measures[i] / (double) 4294967295ull);
+	    if(result > max)
+	      max = result;
+	  }
+	  Kp[k] = 31.622776601683793 * max; // sqrt(1000) * max(j/1000 - F(X_i))
+	}
+	// Computing K_{1000}-:
+	{
+	  double max = 0.0;
+	  for(i = 0; i < 1000; i ++){
+	    double result =  ((double) measures[i] / (double) 4294967295ull) -
+	      (((double) i) / 1000.0);
+	    if(result > max)
+	      max = result;
+	  }
+	  Km[k] = 31.622776601683793 *max; // sqrt(1000) * max(j/1000 - F(X_i))
 	}
       }
-      tmp = measures[i];
-      measures[i] = measures[index];
-      measures[index] = tmp;
-    }
-    // Computing K_{1000}+:
-    {
-      double max = 0.0;
-      for(i = 0; i < 1000; i ++){
-	double result = (((double) i + 1) / 1000.0) -
-	  ((double) measures[i] / (double) 4294967295ull);
-	if(result > max)
-	  max = result;
+      // Computed the Smirnof-Kolmogorov test over 1000 samples 30
+      // times. Now applying a new Smirnof-Kolmogorov test over these 30 results:
+      // Sorting:
+      for(i = 0; i < 30; i ++){
+	double tmp, min_value = Kp[i];
+	int index = i;
+	for(j = i + 1; j < 30; j ++){
+	  if(Kp[j] < min_value){
+	    min_value = Kp[j];
+	    index = j;
+	  }
+	}
+	tmp = Kp[i];
+	Kp[i] = Kp[index];
+	Kp[index] = tmp;
       }
-      Kp[k] = 31.622776601683793 * max; // sqrt(1000) * max(j/1000 - F(X_i))
-    }
-    // Computing K_{1000}-:
-    {
-      double max = 0.0;
-      for(i = 0; i < 1000; i ++){
-	double result =  ((double) measures[i] / (double) 4294967295ull) -
-	  (((double) i) / 1000.0);
-	if(result > max)
-	  max = result;
+      for(i = 0; i < 30; i ++){
+	double tmp, min_value = Km[i];
+	int index = i;
+	for(j = i + 1; j < 30; j ++){
+	  if(Km[j] < min_value){
+	    min_value = Km[j];
+	    index = j;
+	  }
+	}
+	tmp = Km[i];
+	Km[i] = Km[index];
+	Km[index] = tmp;
       }
-      Km[k] = 31.622776601683793 *max; // sqrt(1000) * max(j/1000 - F(X_i))
-    }
-  }
-  // Computed the Smirnof-Kolmogorov test over 1000 samples 20
-  // times. Now applying a new Smirnof-Kolmogorov test over these 20 results:
-  // Sorting:
-  for(i = 0; i < 20; i ++){
-    double tmp, min_value = Kp[i];
-    int index = i;
-    for(j = i + 1; j < 20; j ++){
-      if(Kp[j] < min_value){
-	min_value = Kp[j];
-	index = j;
+      // Computing K_{30}+:
+      {
+	double max = 0.0;
+	for(i = 0; i < 30; i ++){
+	  double result = (((double) i + 1) / 30.0) -
+	    (1.0 - pow(M_E, -2.0 * Kp[i] * Kp[i]));
+	  if(result > max)
+	    max = result;
+	}
+	Kpp = 5.477225575051661 * max; // sqrt(30) * max(j/1000 - F(X_i))
       }
-    }
-    tmp = Kp[i];
-    Kp[i] = Kp[index];
-    Kp[index] = tmp;
-  }
-  for(i = 0; i < 20; i ++){
-    double tmp, min_value = Km[i];
-    int index = i;
-    for(j = i + 1; j < 20; j ++){
-      if(Km[j] < min_value){
-	min_value = Km[j];
-	index = j;
+      // Computing K_{30}-:
+      {
+	double max = 0.0;
+	for(i = 0; i < 30; i ++){
+	  double result = (1.0 - pow(M_E, -2.0 * Km[i] * Km[i])) -
+	    (((double) i) / 30.0);
+	  if(result > max)
+	    max = result;
+	}
+	Kmm = 5.477225575051661 * max; // sqrt(30) * max(j/1000 - F(X_i))
       }
-    }
-    tmp = Km[i];
-    Km[i] = Km[index];
-    Km[index] = tmp;
-  }
-  // Computing K_{20}+:
-  {
-    double max = 0.0;
-    for(i = 0; i < 20; i ++){
-      double result = (((double) i + 1) / 20.0) -
-	(1.0 - pow(M_E, -2.0 * Kp[i] * Kp[i]));
-      if(result > max)
-	max = result;
-    }
-    Kpp = 4.47213595499958 * max; // sqrt(20) * max(j/1000 - F(X_i))
-  }
-  // Computing K_{20}-:
-  {
-    double max = 0.0;
-    for(i = 0; i < 20; i ++){
-      double result = (1.0 - pow(M_E, -2.0 * Km[i] * Km[i])) -
-	(((double) i) / 20.0);
-      if(result > max)
-	max = result;
-    }
-    Kmm = 4.47213595499958 * max; // sqrt(20) * max(j/1000 - F(X_i))
-  }
-  printf("DEBUG: K+: %f K=: %f\n", Kpp, Kmm); 
+      if(Kpp < 0.04354 || Kmm < 0.04354 || Kpp > 1.4801 || Kmm > 1.4801)
+	penalty += 2;
+      else if(Kpp < 0.1351 || Kmm < 0.1351 || Kpp > 1.1916 || Kmm > 1.1916)
+	penalty ++;
+      if(penalty > 1){
+	fails ++;
+	break;
+      }
+      //printf("DEBUG: K+: %f K=: %f\n", Kpp, Kmm);
+    } // End of three_tests
+  } // End of all_tests
+  quality("Quality of equidistribution test", (double) (1000 - fails) /
+	  (double) 1000);
   _Wdestroy_rng(free, my_rng);
 }
  
@@ -513,7 +379,6 @@ int main(int argc, char **argv){
   test_multithread();
 #endif
   test_equidistribution();
-  //test_chi_square1();
   imprime_resultado();
   return 0;
 }
