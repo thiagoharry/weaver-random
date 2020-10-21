@@ -232,26 +232,39 @@ void test_multithread(void){
   _Wdestroy_rng(free, my_rng2);
 }
 
+uint32_t reverse(uint32_t x){
+  x = ((x & 0x55555555) << 1) | ((x & 0xAAAAAAAA) >> 1); // Swap _<>_
+  x = ((x & 0x33333333) << 2) | ((x & 0xCCCCCCCC) >> 2); // Swap __<>__
+  x = ((x & 0x0F0F0F0F) << 4) | ((x & 0xF0F0F0F0) >> 4); // Swap ____<>____
+  x = ((x & 0x00FF00FF) << 8) | ((x & 0xFF00FF00) >> 8); // Swap ...
+  x = ((x & 0x0000FFFF) << 16) | ((x & 0xFFFF0000) >> 16); // Swap ...
+  return x;
+}
 
-void test_equidistribution(void){
+
+void test_equidistribution(bool reversal){
   struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
   uint32_t measures[1000];
   double Kp[30], Km[30], Kpp, Kmm;
   int i, j, k, three_tests, all_tests;
-  int penalty, fails = 0;
+  int penalty1, penalty2, fails1 = 0, fails2 = 0;
   // F(x) = Pr(X <= x)
   // F_n(x) = (Número de X_1, ... X_n menores que x) / n
   // K_n+ = \sqrt(n) max_{x \in R} (F_n(x)-F(x)) ; Maior desvio pra cima
   // K_n- = \sqrt(n) max_{x \in R} (F(x)-F_n(x)) ; Maior desvio pra baixo
   for(all_tests = 0; all_tests < 1000; all_tests ++){
     // Repeating the tests 3 times:
+    penalty1 = 0;
+    penalty2 = 0;
     for(three_tests = 0; three_tests < 3; three_tests ++){
-      penalty = 0;
       // Repeating 30 times:
       for(k = 0; k < 30; k ++){
 	// Measuring 1000 generations:
 	for(i = 0; i < 1000; i ++)
-	  measures[i] = _Wrand(my_rng);
+	  if(reversal)
+	    measures[i] = reverse(_Wrand(my_rng));
+	  else
+	    measures[i] = _Wrand(my_rng);
 	// Sorting the measures:
 	for(i = 0; i < 1000; i ++){
 	  uint32_t tmp, min_value = measures[i];
@@ -340,18 +353,24 @@ void test_equidistribution(void){
 	}
 	Kmm = 5.477225575051661 * max; // sqrt(30) * max(j/1000 - F(X_i))
       }
-      if(Kpp < 0.04354 || Kmm < 0.04354 || Kpp > 1.4801 || Kmm > 1.4801)
-	penalty += 2;
-      else if(Kpp < 0.1351 || Kmm < 0.1351 || Kpp > 1.1916 || Kmm > 1.1916)
-	penalty ++;
-      if(penalty > 1){
-	fails ++;
-	break;
-      }
-      //printf("DEBUG: K+: %f K=: %f\n", Kpp, Kmm);
+      if(Kpp < 0.04354  || Kpp > 1.4801)
+	penalty1 += 2;
+      else if(Kpp < 0.1351 || Kpp > 1.1916)
+	penalty1 ++;
+      if(Kmm < 0.04354 || Kmm > 1.4801)
+	penalty2 += 2;
+      else if(Kmm < 0.1351 || Kmm > 1.1916)
+	penalty2 ++;
+      //printf("DEBUG: K+: %f K-: %f\n", Kpp, Kmm);
     } // End of three_tests
+    if(penalty1 > 1)
+      fails1 ++;
+    if(penalty2 > 1)
+      fails2 ++;
   } // End of all_tests
-  quality("Quality of equidistribution test", (double) (1000 - fails) /
+  quality("Quality of equidistribution test (K+)", (double) (1000 - fails1) /
+	  (double) 1000);
+  quality("Quality of equidistribution test (K-)", (double) (1000 - fails2) /
 	  (double) 1000);
   _Wdestroy_rng(free, my_rng);
 }
@@ -378,7 +397,7 @@ int main(int argc, char **argv){
 #if !defined(W_RNG_ISO_C) && !defined(W_RNG_CRYPTO)
   test_multithread();
 #endif
-  test_equidistribution();
+  test_equidistribution(true); // Argument: should we reverse the obtained bits?
   imprime_resultado();
   return 0;
 }

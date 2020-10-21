@@ -859,8 +859,18 @@ demais do valor idealizado), damos uma penalidade à esta medida. Após
 uma falha no teste. Por fim, o procedimento acima é repetido 10000
 vezes e assim obtemos uma prcentagem de quantas falhas obtivemos.
 
-Ao realizar tal experimento usando a semente 2613561388 gerada
-aleatoriamente, obtemos:
+Temos na verdade duas porcentagens de sucesso: uma para o teste
+$K^+_n$, que detecta se há regiões que tem mais pontos gerados que o
+esperado, e outra para o $K^-_n$ que detecta se há região com menos
+pontos que o esperado.
+
+Fizemos o experimento usando a semente 2613561388 gerada
+aleatoriamente. Além disso, tanto para $K^+_n$ como para $K^-_n$
+medimos a taxa de sucesso primeiro ao usar diretamente o valor
+retornado pelo gerador e segundo ao inverter a ordem de seus
+bits. Isso é feito porque este teste dá um peso maior para os bits
+mais significativos, e é desejável arantir que os bits menos
+significativos são tão bons quanto. O resultado foi:
 
 \vbox{%A forma mais geral de remover espaçamento entre linhas:
 \baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
@@ -869,18 +879,23 @@ aleatoriamente, obtemos:
 \def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
 \halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
 \hfil#& \vrule#& \hfil#\hfil& \vrule#&
-\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
+\hfil#& \vrule#\tabskip=0pt\cr\linha
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
-Sucesso\hidewidth&&
-\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
-&&SFMT&&88\%&&Xorshiro**&&89\%&\cr\linha
-&&PCG&&88\%&&ChaCha20&&88\%&\cr\linha}}
+Sucesso ($K^+_n$)\hidewidth&&
+\omit\hidewidth Sucesso ($K^-_n$)\hidewidth&\cr\linha
+&&SFMT&&91\%/92\%&&92\%/92\%&\cr\linha
+&&Xorshiro**&&91\%/91\%&&92\%/93\%&\cr\linha
+&&PCG&&91\%/93\%&&91\%/93\%&\cr\linha
+&&\monoespaco{rand()}&&91\%/91\%&&91\%/92\%&\cr\linha
+&&ChaCha20&&92\%/92\%&&91\%/92\%&\cr\linha}}
 
-Todos os algoritmos testados apresentaram desempenho saisfatório neste
-teste mais básico. É importante notar que esse percentua de 88\% é o
-valor esperado, com desempenhos consistentemente muito acima disso
-sendo suspeitos, pois algo realmente aleatório ocasionalmente falha em
-testes estatísticos.
+Todos os algoritmos testados apresentaram desempenho satisfatório
+neste teste mais básico, independente de invertermos os bits ou
+não. Para fins de referência, o valor esperado para uma distribuição
+completamente aleatória é 92,34\% em todos os testes. Sucesso muito
+acima disso faz a distribuição agir de maneira idealizada demais para
+ser próxima de aleatória e sucesso muito abaixo denota que o gerador
+tem uma qualidade baixa e diferente demais de algo aleatório.
 
 \secao{3. Medida de Desempenho}
 
