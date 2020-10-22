@@ -374,6 +374,76 @@ void test_equidistribution(bool reversal){
 	  (double) 1000);
   _Wdestroy_rng(free, my_rng);
 }
+
+void test_serial(bool reversal){
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
+  const int d = 100;
+  int i, j, round_of_measures, three_tests, total_tests;
+  int penalty, fails = 0;
+  unsigned long measures[d][d];
+  const int n =  d * d * 5;
+  double  v = ((double) (d * d - 1));
+  double too_bad = v - (2.33 * sqrt(2 * v)) + ((2.33 * 2.33 * 2.0) / 3.0) -
+    0.66666666;
+  double little_bad = v - (1.64 * sqrt(2 * v)) + ((1.64 * 1.64 * 2.0) / 3.0) -
+    0.66666666;
+  double little_ideal = v + (1.64 * sqrt(2 * v)) + ((1.64 * 1.64 * 2.0) / 3.0) -
+    0.66666666;
+  double too_ideal = v + (2.33 * sqrt(2 * v)) + ((2.33 * 2.33 * 2.0) / 3.0) -
+    0.66666666;
+  for(total_tests = 0; total_tests < 1000; total_tests ++){
+    penalty = 0;
+    for(three_tests = 0; three_tests < 3; three_tests ++){
+      //printf("Teste %d/3\n", three_tests + 1);
+      for(i = 0; i < d; i ++)
+	for(j = 0; j < d; j ++)
+	  measures[i][j] = 0;
+      for(round_of_measures = 0; round_of_measures < n; round_of_measures ++){
+	{ // Getting random values
+	  int v1, v2;
+	  if(reversal){
+	    v1 = (int) ((((double) reverse(_Wrand(my_rng))) /
+			 (double) 4294967295ull) * d);
+	    v2 = (int) ((((double) reverse(_Wrand(my_rng))) /
+			 (double) 4294967295ull) * d);
+	  }
+	  else{
+	    v1 = (int) ((((double) _Wrand(my_rng)) /
+			 (double) 4294967295ull) * d);
+	    v2  = (int) ((((double) _Wrand(my_rng)) /
+			  (double) 4294967295ull) * d);
+	  }
+	  if(v1 == d) v1 = d - 1; // Very rare event
+	  if(v2 == d) v2 = d - 1; // Very rare event
+	  measures[v1][v2] ++;
+	}
+      }
+      {// Computing V:
+	double V = 0.0;
+	unsigned long long sum = 0;
+	for(i = 0; i < d; i ++)
+	  for(j = 0; j < d; j ++)
+	    sum += ((double) (measures[i][j] * measures[i][j] * d * d));
+	V = ((double) sum) / ((double) n);
+	V -= n;
+	//printf("penalty: %d\n", penalty);
+	//printf("%f %f | %f %f\n", too_bad, little_bad, little_ideal, too_ideal);
+	//printf("V: %f\n", V);
+	if(V < too_bad || V > too_ideal)
+	  penalty += 2;
+	else if(V < little_bad || V > little_ideal)
+	  penalty ++;
+	if(penalty >= 2){
+	  fails ++;
+	  break;
+	}
+      }
+    } // End of three tests
+  } // End of total_tests
+  quality("Quality of serial tests", (double) (1000 - fails) /
+	  (double) 1000);
+  _Wdestroy_rng(free, my_rng);
+}
  
 int main(int argc, char **argv){
   if(argc <= 1)
@@ -397,7 +467,9 @@ int main(int argc, char **argv){
 #if !defined(W_RNG_ISO_C) && !defined(W_RNG_CRYPTO)
   test_multithread();
 #endif
-  test_equidistribution(true); // Argument: should we reverse the obtained bits?
+  // Argument means: should reverse the obtained bits?
+  test_equidistribution(false);
+  test_serial(false);
   imprime_resultado();
   return 0;
 }
