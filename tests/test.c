@@ -444,7 +444,86 @@ void test_serial(bool reversal){
 	  (double) 1000);
   _Wdestroy_rng(free, my_rng);
 }
+
+void test_gap(void){
+  int i;
+  int fails = 0, all_tests;
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
+  int three_tests, penalty;
+  uint32_t Uj;
+  int bits = 0, bit;
+  for(all_tests = 0; all_tests < 1000; all_tests ++){
+    penalty = 0;
+    for(three_tests = 0; three_tests < 3; three_tests ++){
+      // G1: Initialize:
+      unsigned long s = 0, r;
+      const unsigned t = 19;
+      unsigned long count[t + 1];
+      unsigned long n = ((1 << t) * 5);
+      for(i = 0; i <= t; i ++)
+	count[i] = 0;
+      // G2: Set r zero:
+      r = 0;
+      do{
+	// G3: [a <= Uj < B?]:
+	if(bits == 0){
+	  Uj = _Wrand(my_rng);
+	  bit = Uj % 2;
+	  Uj = Uj >> 1;
+	  bits = 31;
+	}
+	else{
+	  bit = Uj % 2;
+	  Uj = Uj >> 1;
+	  bits --;
+	}
+	if(bit == 0){
+	  // G4: Increase r
+	  r ++;
+	  continue;
+	}
+	else{
+	  // G5: Record the gap length:
+	  if(r >= t)
+	    count[t] ++;
+	  else
+	    count[r] ++;
+	}
+	// G6: n gaps found?
+	r = 0;
+	s ++;
+      }while(s < n);    
+      {// Computing chi-square test in count[]:
+	unsigned long sum = 0;
+	double V;
+	for(i = 0; i < t + 1; i ++){
+	  //printf("%d: {%lu} ", i, count[i]);
+	  if(i < t){
+	    sum += (count[i] * count[i] * (2 * (1 << i)));
+	  }
+	  else{
+	    sum += (count[i] * count[i] * (1 << i));
+	  }
+	}
+	V = ((double) sum) / ((double) n);
+	V -= ((double) n);
+	if(V < 8.260 || V > 37.57)
+	  penalty += 2;
+	else if(V < 10.85 || V > 31.41)
+	  penalty ++;
+      }
+      if(penalty >= 2){
+	fails ++;
+	break;
+      }
+    } // End of three tests
+  } // End of all tests
+  quality("Quality of gap  test", (double) (1000 - fails) /
+	  (double) 1000);
+  _Wdestroy_rng(free, my_rng);
+}
  
+
 int main(int argc, char **argv){
   if(argc <= 1)
     initialize_seed();
@@ -468,8 +547,9 @@ int main(int argc, char **argv){
   test_multithread();
 #endif
   // Argument means: should reverse the obtained bits?
-  test_equidistribution(false);
-  test_serial(false);
+  //test_equidistribution(false);
+  //test_serial(false);
+  test_gap();
   imprime_resultado();
   return 0;
 }

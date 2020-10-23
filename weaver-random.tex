@@ -897,7 +897,7 @@ acima disso faz a distribuição agir de maneira idealizada demais para
 ser próxima de aleatória e sucesso muito abaixo denota que o gerador
 tem uma qualidade baixa e diferente demais de algo aleatório.
 
-\subsecao{3.1. Teste Serial}
+\subsecao{3.2. Teste Serial}
 
 Este é o segundo teste empírico sugerido em [Knuth, 1998]. Nele,
 escolhemos gerar 50000 pares de números entre 0 e 99 como sugerido por
@@ -936,6 +936,45 @@ no teste e equivalente ao ideal. O único algoritmos que teve uma
 qualidade ligeiramente inferior foi o gerador ISO (\monoespaco{rand})
 quando invertemos a ordem dos bits. O ligeiro desempenho pior então
 está nos bits menos significativos.
+
+\subsecao{3.3. Teste de lacuna}
+
+Este é o teste baseado no terceiro empírico sugerido em [Knuth,
+1998]. Mas ao invés de fazer a medida de lacuna interpretando os
+números obtidos como entre 0 e 1 como sugerido (o que daria novamente
+um peso alto para os bits mais significativos), nós medimos a lacuna
+de bits: interpretamos os valores retornados pelo gerados como uma
+sequência contínua de bits. E contamos o tamanho das lacunas
+encontradas (sequências de bits 0 terminadas em bits 1).
+
+Por exemplo, na sequência ``100110010100001'' obtemos as lacunas ``1''
+(tamanho 0), ``001'' (tamanho 2), ``1'' (tamanho 0), ``001'' (tamanho
+2), ``01'' (tamanho 1) e ``00001'' (tamanho 4). Em cada gerador
+obtemos uma amostragem de $5\cdot2^{20}$ lacunas e avaliamos a
+quantidade de cada tamanho de lacunas com um teste de
+chi-quadrado. Aplicamos então a mesma avaliação dos outros testes e
+medimos a taxa de sucesso (novamente esperada como sendo próxima de
+92,34\%). O resultado obtido para a semente 3558029206 gerada
+aleatoriamente foi:
+
+\vbox{%A forma mais gseral de remover espaçamento entre linhas:
+\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
+\def\linha{\noalign{\hrule}}
+\def\hidewidth{\hskip-1000pt plus 1fill}
+\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
+\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
+\hfil#& \vrule#& \hfil#\hfil& \vrule#&
+\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
+&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+Sucesso\hidewidth&&
+\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+&&SFMT&&91\%&&Xorshiro**&&90\%&\cr\linha
+&&PCG&&93\%&&\monoespaco{rand()}&&91\%&\cr\linha
+&&ChaCha20&&91\%&&&&&\cr\linha}}
+
+Novamente os testes ficaram próximos do valor esperado para todos os
+algoritmos, apenas com o Xorshro** tendo uma taxa muito ligeiramente
+menor de sucesso.
 
 \secao{3. Medida de Desempenho}
 
