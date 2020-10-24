@@ -242,135 +242,54 @@ uint32_t reverse(uint32_t x){
 }
 
 
-void test_equidistribution(bool reversal){
+void test_equidistribution(void){
   struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
-  uint32_t measures[1000];
-  double Kp[30], Km[30], Kpp, Kmm;
-  int i, j, k, three_tests, all_tests;
-  int penalty1, penalty2, fails1 = 0, fails2 = 0;
+  int i, three_tests, all_tests;
+  int penalty, fails = 0;
+  uint32_t value;
+  int bit, bits = 0;
+  const int n = 10000;
   // F(x) = Pr(X <= x)
   // F_n(x) = (Número de X_1, ... X_n menores que x) / n
   // K_n+ = \sqrt(n) max_{x \in R} (F_n(x)-F(x)) ; Maior desvio pra cima
   // K_n- = \sqrt(n) max_{x \in R} (F(x)-F_n(x)) ; Maior desvio pra baixo
   for(all_tests = 0; all_tests < 1000; all_tests ++){
     // Repeating the tests 3 times:
-    penalty1 = 0;
-    penalty2 = 0;
+    penalty = 0;
     for(three_tests = 0; three_tests < 3; three_tests ++){
-      // Repeating 30 times:
-      for(k = 0; k < 30; k ++){
-	// Measuring 1000 generations:
-	for(i = 0; i < 1000; i ++)
-	  if(reversal)
-	    measures[i] = reverse(_Wrand(my_rng));
-	  else
-	    measures[i] = _Wrand(my_rng);
-	// Sorting the measures:
-	for(i = 0; i < 1000; i ++){
-	  uint32_t tmp, min_value = measures[i];
-	  int index = i;
-	  for(j = i + 1; j < 1000; j ++){
-	    if(measures[j] < min_value){
-	      min_value = measures[j];
-	      index = j;
-	    }
-	  }
-	  tmp = measures[i];
-	  measures[i] = measures[index];
-	  measures[index] = tmp;
+      unsigned long number_of_ones = 0, number_of_zeros = 0;
+      double V;
+      // Measuring n generations:
+      for(i = 0; i < n; i ++){
+	if(bits == 0){
+	  value = _Wrand(my_rng);
+	  bit = value % 2;
+	  value = value >> 1;
+	  bits = 31;
 	}
-	// Computing K_{1000}+:
-	{
-	  double max = 0.0;
-	  for(i = 0; i < 1000; i ++){
-	    double result = (((double) i + 1) / 1000.0) -
-	      ((double) measures[i] / (double) 4294967295ull);
-	    if(result > max)
-	      max = result;
-	  }
-	  Kp[k] = 31.622776601683793 * max; // sqrt(1000) * max(j/1000 - F(X_i))
+	else{
+	  bit = value % 2;
+	  value = value >> 1;
+	  bits --;
 	}
-	// Computing K_{1000}-:
-	{
-	  double max = 0.0;
-	  for(i = 0; i < 1000; i ++){
-	    double result =  ((double) measures[i] / (double) 4294967295ull) -
-	      (((double) i) / 1000.0);
-	    if(result > max)
-	      max = result;
-	  }
-	  Km[k] = 31.622776601683793 *max; // sqrt(1000) * max(j/1000 - F(X_i))
-	}
+	if(bit == 1) number_of_ones ++;
+	else number_of_zeros ++;
       }
-      // Computed the Smirnof-Kolmogorov test over 1000 samples 30
-      // times. Now applying a new Smirnof-Kolmogorov test over these 30 results:
-      // Sorting:
-      for(i = 0; i < 30; i ++){
-	double tmp, min_value = Kp[i];
-	int index = i;
-	for(j = i + 1; j < 30; j ++){
-	  if(Kp[j] < min_value){
-	    min_value = Kp[j];
-	    index = j;
-	  }
-	}
-	tmp = Kp[i];
-	Kp[i] = Kp[index];
-	Kp[index] = tmp;
+      V = ((double) ((number_of_zeros * number_of_zeros * 2) +
+		     (number_of_ones * number_of_ones * 2)));
+      V = V / ((double) n);
+      V -= ((double) n);
+      if(V < 0.00016 || V > 6.635)
+	penalty += 2;
+      else if(V < 0.00393 || V > 3.841)
+	penalty ++;
+      if(penalty > 1){
+	fails ++;
+	break;
       }
-      for(i = 0; i < 30; i ++){
-	double tmp, min_value = Km[i];
-	int index = i;
-	for(j = i + 1; j < 30; j ++){
-	  if(Km[j] < min_value){
-	    min_value = Km[j];
-	    index = j;
-	  }
-	}
-	tmp = Km[i];
-	Km[i] = Km[index];
-	Km[index] = tmp;
-      }
-      // Computing K_{30}+:
-      {
-	double max = 0.0;
-	for(i = 0; i < 30; i ++){
-	  double result = (((double) i + 1) / 30.0) -
-	    (1.0 - pow(M_E, -2.0 * Kp[i] * Kp[i]));
-	  if(result > max)
-	    max = result;
-	}
-	Kpp = 5.477225575051661 * max; // sqrt(30) * max(j/1000 - F(X_i))
-      }
-      // Computing K_{30}-:
-      {
-	double max = 0.0;
-	for(i = 0; i < 30; i ++){
-	  double result = (1.0 - pow(M_E, -2.0 * Km[i] * Km[i])) -
-	    (((double) i) / 30.0);
-	  if(result > max)
-	    max = result;
-	}
-	Kmm = 5.477225575051661 * max; // sqrt(30) * max(j/1000 - F(X_i))
-      }
-      if(Kpp < 0.04354  || Kpp > 1.4801)
-	penalty1 += 2;
-      else if(Kpp < 0.1351 || Kpp > 1.1916)
-	penalty1 ++;
-      if(Kmm < 0.04354 || Kmm > 1.4801)
-	penalty2 += 2;
-      else if(Kmm < 0.1351 || Kmm > 1.1916)
-	penalty2 ++;
-      //printf("DEBUG: K+: %f K-: %f\n", Kpp, Kmm);
     } // End of three_tests
-    if(penalty1 > 1)
-      fails1 ++;
-    if(penalty2 > 1)
-      fails2 ++;
   } // End of all_tests
-  quality("Quality of equidistribution test (K+)", (double) (1000 - fails1) /
-	  (double) 1000);
-  quality("Quality of equidistribution test (K-)", (double) (1000 - fails2) /
+  quality("Quality of equidistribution test", (double) (1000 - fails) /
 	  (double) 1000);
   _Wdestroy_rng(free, my_rng);
 }
@@ -547,9 +466,9 @@ int main(int argc, char **argv){
   test_multithread();
 #endif
   // Argument means: should reverse the obtained bits?
-  //test_equidistribution(false);
-  //test_serial(false);
-  test_gap();
+  //test_equidistribution();
+  test_serial();
+  //test_gap();
   imprime_resultado();
   return 0;
 }

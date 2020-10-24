@@ -838,64 +838,57 @@ O arquivo com o código-fonte de nossas funções terá a seguinte forma:
 
 \secao{3. Testes de Qualidade}
 
+Como forma de testar a qualidade de todos os algoritmos fornecidos e
+fazer comparações, fazemos alguns testes estatísticos emíricos
+sugeridos em [Knuth, 1998]. Uma ressalva é que muitos dos testes
+sugeridos lá presume o desejo de gerar números aleatórios entre 0 e um
+valor $n$, ou então valores reais entre 0 e 1. Contudo, se assumirmos
+isso acabaremos dando um peso maior para os bits mais significativos
+gerados. Não sabemos como o valor de 32 bits gerado pelas nossas
+funções seria usado. Desta forma, queremos garantir a qualidade dele
+em termos de cada um dos bits gerados. Desta forma, usamos os testes
+sugeridos sempre que relevante, avaliando os valores de nosso gerados
+como uma sequncia de bits e avaliamos como se isso fosse uma sequência
+de zeros e uns gerados aleatoriamente.
+
+Em todos os testes, aplicamos um teste como o Chi-Quadrado (ou
+Smirnov-Kolmogorov) como sugerido na referência [Knuth,
+1998]. Repetimos as medidas 3 vezes, se uma delas um valor aleatório
+tiver uma chance inferior a 1\% de ser tão distante ou de ser tão
+próximo do esperado, interrompemos os testes e consideramos uma
+falha. Se por duas das três vezes testadas o valor obtido for algo com
+apenas 5\% de chance de ser tão distante ou tão próximo do esperado,
+também consideramos uma falha. Repetimos os três testes mil vezes e
+geramos assim uma porcentagem de sucesso. Como referência, a menos que
+seja dito o contrário, o valor esperado de sucesso é de 92,34\%.
+
 \subsecao{3.1. Teste de Equidistribuição}
 
-Este teste é o primeiro teste empírico sugerido em [Knuth,
-1998]. Nele, nosso objetivo é usar o gerador para simular a geração de
-números entre 0 e 1 e checar se estatisticamente obtemos valores bem
-espalhados ao longo do segmento.
+Basicamente neste teste geramos uma sequência de dez mil bits
+aleatórios e avaliamos o quão bem distribuído o valor está entre zeros
+e uns. Geramos a semente aleatória 2130833862 e obtivemos a seguinte
+taxa de sucesso para nosos algoritmos:
 
-O teste funciona gerando 1000 valores aleatórios de 32 bits e
-aplicando o teste de Smirnov-Kolmogorov para obter medida do quão
-próximo tais números estão espalhados em relação ao esperado. A medida
-é repetida 30 vezes e seus diferentes resultados são novamente
-comparados com a distribuição esperada novamente por meio de
-Smirnov-Kolmogorov. Se o resultado é suficientemente improvável (1\%
-de chance de estar diferente demais ou próximo demais do valor
-idealizado), consideramos que o teste falhou. Se for algo improvável,
-mas não tanto (5\% de chance de estar diferente demais ou próximo
-demais do valor idealizado), damos uma penalidade à esta medida. Após
-3 medidas se tivermos 2 penalidades ou somente 1 falha, consideramos
-uma falha no teste. Por fim, o procedimento acima é repetido 10000
-vezes e assim obtemos uma prcentagem de quantas falhas obtivemos.
-
-Temos na verdade duas porcentagens de sucesso: uma para o teste
-$K^+_n$, que detecta se há regiões que tem mais pontos gerados que o
-esperado, e outra para o $K^-_n$ que detecta se há região com menos
-pontos que o esperado.
-
-Fizemos o experimento usando a semente 2613561388 gerada
-aleatoriamente. Além disso, tanto para $K^+_n$ como para $K^-_n$
-medimos a taxa de sucesso primeiro ao usar diretamente o valor
-retornado pelo gerador e segundo ao inverter a ordem de seus
-bits. Isso é feito porque este teste dá um peso maior para os bits
-mais significativos, e é desejável arantir que os bits menos
-significativos são tão bons quanto. O resultado foi:
-
-\vbox{%A forma mais geral de remover espaçamento entre linhas:
+\vbox{%A forma mais gseral de remover espaçamento entre linhas:
 \baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
 \def\linha{\noalign{\hrule}}
 \def\hidewidth{\hskip-1000pt plus 1fill}
 \def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
 \halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
 \hfil#& \vrule#& \hfil#\hfil& \vrule#&
-\hfil#& \vrule#\tabskip=0pt\cr\linha
+\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
-Sucesso ($K^+_n$)\hidewidth&&
-\omit\hidewidth Sucesso ($K^-_n$)\hidewidth&\cr\linha
-&&SFMT&&91\%/92\%&&92\%/92\%&\cr\linha
-&&Xorshiro**&&91\%/91\%&&92\%/93\%&\cr\linha
-&&PCG&&91\%/93\%&&91\%/93\%&\cr\linha
-&&\monoespaco{rand()}&&91\%/91\%&&91\%/92\%&\cr\linha
-&&ChaCha20&&92\%/92\%&&91\%/92\%&\cr\linha}}
+Sucesso\hidewidth&&
+\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+&&SFMT&&92\%&&Xorshiro**&&91\%&\cr\linha
+&&PCG&&93\%&&\monoespaco{rand()}&&91\%&\cr\linha
+&&ChaCha20&&93\%/94\%&&&&&\cr\linha}}
 
-Todos os algoritmos testados apresentaram desempenho satisfatório
-neste teste mais básico, independente de invertermos os bits ou
-não. Para fins de referência, o valor esperado para uma distribuição
-completamente aleatória é 92,34\% em todos os testes. Sucesso muito
-acima disso faz a distribuição agir de maneira idealizada demais para
-ser próxima de aleatória e sucesso muito abaixo denota que o gerador
-tem uma qualidade baixa e diferente demais de algo aleatório.
+
+odos os algoritmos testados apresentaram desempenho satisfatório neste
+teste mais básico. O valor inesperadamente alto do ChaCha2 aparenta
+ser uma flutuação. Testando ele repetidas vezes, os valores obtidos
+costumam ser muito mais próximos do esperado.
 
 \subsecao{3.2. Teste Serial}
 
