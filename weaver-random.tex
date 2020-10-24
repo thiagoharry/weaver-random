@@ -892,16 +892,11 @@ costumam ser muito mais próximos do esperado.
 
 \subsecao{3.2. Teste Serial}
 
-Este é o segundo teste empírico sugerido em [Knuth, 1998]. Nele,
-escolhemos gerar 50000 pares de números entre 0 e 99 como sugerido por
-Knuth na referência. Aplicamos sobre o resultado o teste
-Chi-Quadrado. Assim como no teste anterior, repetimos o teste 3 vezes
-e avaliando os 3 resultados como sucesso ou falha. E repetimos isso
-mil vezes comparando o total de sucessos com o valor esperado (o valor
-exato esperado é 92,34\%, mas medimos uma precisão de 1\%). Também
-fizemos o teste primeiro sem inverter os bits dos valores gerados e
-depois invertendo, gerando as duas porcentagens separadas por ``/''. O
-resultado para a semente 125713416 gerada aleatoriamente foi:
+O teste serial consiste em gerar sequências de $d$ bits e verificar se
+cada combinação possível ocorre com uma proporção semelhante a
+$1/d^2$. No nosso caso escolhemos $d=15$ (propositalmetne um valor
+primo em relação a 32) e usamos a semente 171330726 escolhida
+aleatoriamente. O resultado obtido foi:
 
 \vbox{%A forma mais gseral de remover espaçamento entre linhas:
 \baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
@@ -914,21 +909,12 @@ resultado para a semente 125713416 gerada aleatoriamente foi:
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
 Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
-&&SFMT&&92\%/92\%&&Xorshiro**&&92\%/92\%&\cr\linha
-&&PCG&&91\%/92\%&&\monoespaco{rand()}&&92\%/90\%&\cr\linha
-&&ChaCha20&&93\%/91\%&&&&&\cr\linha}}
+&&SFMT&&93\%&&Xorshiro**&&92\%&\cr\linha
+&&PCG&&90\%&&\monoespaco{rand()}&&91\%&\cr\linha
+&&ChaCha20&&92\%&&&&&\cr\linha}}
 
-A importância deste teste é que enquanto o anterior garante que
-eventualmente passaremos por todos os valores caso usemos o gerador
-para gerar valores em um intervalo suficientemente restrito, este
-garante que fazemos isso seguindo uma ordem que não é tão aparente
-assim e que podemos usar o gerador também para gerar pares de valores.
-
-Todos os algoritmos recomendados tiveram um desempenho igualmente bom
-no teste e equivalente ao ideal. O único algoritmos que teve uma
-qualidade ligeiramente inferior foi o gerador ISO (\monoespaco{rand})
-quando invertemos a ordem dos bits. O ligeiro desempenho pior então
-está nos bits menos significativos.
+Todos os algoritmos recomendados tiveram desempenho esperado no test,
+com a flutuação do PCG estando ainda dentro do esperado.
 
 \subsecao{3.3. Teste de lacuna}
 
@@ -969,7 +955,45 @@ Novamente os testes ficaram próximos do valor esperado para todos os
 algoritmos, apenas com o Xorshro** tendo uma taxa muito ligeiramente
 menor de sucesso.
 
-\secao{3. Medida de Desempenho}
+\subsecao{3.4. Teste de Pôquer}
+
+Neste teste interpretamos o retorno de nossos geradores como
+sequências de números de 0 a 15. Geramos então sucessivas tuplas com 5
+elementos. E fazemos a contagem de fenômenos como tuplas em que todos
+os valores são diferentes, todos são iguais, há quatro valores iguais,
+há uma tripla e um par, há uma tripla, há dois pares ou há só um
+par. Medimos o quanto os valores obtidos divergem do que seria
+esperado com valores completamente aleatórios.
+
+O resultado obtido com a semente 3526282783 escolhida aleatoriamente
+foi:
+
+%Total: 1048576
+%All different: 524160   4095/8192
+%One pair: 436800       6825/16384
+%Two pairs: 50400       1575/32768
+%Three of a kind: 33600  525/16384
+%Full house: 2400         75/32768
+%Four of a kind: 1200     75/65536
+%Five of a kind: 16        1/65536
+
+\vbox{%A forma mais gseral de remover espaçamento entre linhas:
+\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
+\def\linha{\noalign{\hrule}}
+\def\hidewidth{\hskip-1000pt plus 1fill}
+\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
+\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
+\hfil#& \vrule#& \hfil#\hfil& \vrule#&
+\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
+&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+Sucesso\hidewidth&&
+\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+&&SFMT&&93\%&&Xorshiro**&&92\%&\cr\linha
+&&PCG&&92\%&&\monoespaco{rand()}&&90\%&\cr\linha
+&&ChaCha20&&91\%&&&&&\cr\linha}}
+
+
+\secao{4. Medida de Desempenho}
 
 Após medir o desempenho dos algoritmos implementados, o seguinte
 resultado foi obtido (as colunas mostram o tempo de geração de cada
@@ -995,7 +1019,7 @@ O teste foi feito em um computador com processador Intel Pentium B980
 dual core com 2,40 GHz e 4 GB de memória RAM. O Sistema Operacional
 foi o Ubuntu 18.04.4. O teste foi compilado com o GCC 7.5.0.
 
-\secao{4. Conclusão}
+\secao{5. Conclusão}
 
 Apesar de gastar muito mais memória que as outras implementações, a
 versão utilizada do Mersenne Twister (o SFMT) ainda é muito mais

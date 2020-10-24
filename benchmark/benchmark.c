@@ -47,9 +47,10 @@ void initialize_seed(void){
 
 void measure_rand(void){
   struct _Wrng *rng = _Wcreate_rng(malloc, seed);
-  int i;
+  int i, j;
   for(i = 0; i < N; i ++){
     TIMER_BEGIN();
+    for(j = 0; j < 1000; j++)
     v = _Wrand(rng);
     TIMER_END();
   }

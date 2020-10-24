@@ -294,14 +294,17 @@ void test_equidistribution(void){
   _Wdestroy_rng(free, my_rng);
 }
 
-void test_serial(bool reversal){
+void test_serial(void){
   struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
-  const int d = 100;
-  int i, j, round_of_measures, three_tests, total_tests;
+  int i, round_of_measures, three_tests, total_tests;
   int penalty, fails = 0;
-  unsigned long measures[d][d];
-  const int n =  d * d * 5;
-  double  v = ((double) (d * d - 1));
+  const int size = 15;
+  const int serie = (1 << size);
+  unsigned int measures[serie]; // 2^20 values
+  const unsigned long long n =  (5 * serie);
+  double  v = (serie - 1);
+  uint32_t value;
+  int bit, bits = 0;
   double too_bad = v - (2.33 * sqrt(2 * v)) + ((2.33 * 2.33 * 2.0) / 3.0) -
     0.66666666;
   double little_bad = v - (1.64 * sqrt(2 * v)) + ((1.64 * 1.64 * 2.0) / 3.0) -
@@ -314,35 +317,33 @@ void test_serial(bool reversal){
     penalty = 0;
     for(three_tests = 0; three_tests < 3; three_tests ++){
       //printf("Teste %d/3\n", three_tests + 1);
-      for(i = 0; i < d; i ++)
-	for(j = 0; j < d; j ++)
-	  measures[i][j] = 0;
+      for(i = 0; i < serie; i ++)
+	measures[i] = 0;
       for(round_of_measures = 0; round_of_measures < n; round_of_measures ++){
-	{ // Getting random values
-	  int v1, v2;
-	  if(reversal){
-	    v1 = (int) ((((double) reverse(_Wrand(my_rng))) /
-			 (double) 4294967295ull) * d);
-	    v2 = (int) ((((double) reverse(_Wrand(my_rng))) /
-			 (double) 4294967295ull) * d);
+	// Getting 'size' bits:
+	int result = 0;
+	for(i = 0; i < size; i ++){
+	  if(bits == 0){
+	    value = _Wrand(my_rng);
+	    bit = value % 2;
+	    value = value >> 1;
+	    bits = 31;	    
 	  }
 	  else{
-	    v1 = (int) ((((double) _Wrand(my_rng)) /
-			 (double) 4294967295ull) * d);
-	    v2  = (int) ((((double) _Wrand(my_rng)) /
-			  (double) 4294967295ull) * d);
+	    bit = value % 2;
+	    value = value >> 1;
+	    bits --;	    
 	  }
-	  if(v1 == d) v1 = d - 1; // Very rare event
-	  if(v2 == d) v2 = d - 1; // Very rare event
-	  measures[v1][v2] ++;
+	  result = result << 1;
+	  result += bit;
 	}
+	measures[result] ++;
       }
       {// Computing V:
 	double V = 0.0;
 	unsigned long long sum = 0;
-	for(i = 0; i < d; i ++)
-	  for(j = 0; j < d; j ++)
-	    sum += ((double) (measures[i][j] * measures[i][j] * d * d));
+	for(i = 0; i < serie; i ++)
+	  sum += measures[i] * measures[i] * serie;
 	V = ((double) sum) / ((double) n);
 	V -= n;
 	//printf("penalty: %d\n", penalty);
@@ -364,6 +365,111 @@ void test_serial(bool reversal){
   _Wdestroy_rng(free, my_rng);
 }
 
+ void test_poker(void){
+   struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
+   int all_tests, fails = 0, all_hands;
+   const unsigned int n = 327080;
+   uint32_t value;
+   int bits = 0;
+   for(all_tests = 0; all_tests < 1000; all_tests ++){
+     int penalty = 0, three_tests;
+     for(three_tests = 0; three_tests < 3; three_tests ++){
+       unsigned int j, i;
+       unsigned long all_different = 0;
+       unsigned long five_of_a_kind = 0;
+       unsigned long four_of_a_kind = 0;
+       unsigned long full_house = 0;
+       unsigned long three_of_a_kind = 0;
+       unsigned long two_pairs = 0;
+       unsigned long one_pair = 0;
+       // Iterating over tuples:
+       for(all_hands = 0; all_hands < n; all_hands ++){
+	 int sorted[5];
+	 for(i = 0; i < 5; i ++){
+	   if(bits == 0){
+	     value = _Wrand(my_rng);
+	     sorted[i] = value % 16;
+	     value = value >> 4;
+	     bits = 28;	    
+	   }
+	   else{
+	     sorted[i] = value % 16;
+	     value = value >> 4;
+	     bits -= 4;	    
+	   }
+	 }
+	 // Now really sort the values:
+	 for(i = 0; i < 5; i ++){
+	   int index = i;
+	   int tmp;
+	   for(j = i + 1; j < 5; j ++){
+	     if(sorted[j] < sorted[index])
+	       index = j;
+	   }
+	   tmp = sorted[i];
+	   sorted[i] = sorted[index];
+	   sorted[index] = tmp;
+	 }
+	 // Got the hand sorted. Measuring the result
+	 if(sorted[0] == sorted[1] && sorted[1] == sorted[2] &&
+	    sorted[2] == sorted[3] && sorted[3] == sorted[4])
+	   five_of_a_kind ++;
+	 else if((sorted[0] == sorted[1] && sorted[1] == sorted[2] &&
+		  sorted[2] == sorted[3]) ||
+		 (sorted[1] == sorted[2] && sorted[2] == sorted[3] &&
+		  sorted[3] == sorted[4]))
+	   four_of_a_kind ++;
+	 else if((sorted[0] == sorted[1] && sorted[1] == sorted[2] &&
+		  sorted[3] == sorted[4]) ||
+		 (sorted[0] == sorted[1] && sorted[2] == sorted[3] &&
+		  sorted[3] == sorted[4]))
+	   full_house ++;
+	 else if((sorted[0] == sorted[1] && sorted[1] == sorted[2]) ||
+		 (sorted[1] == sorted[2] && sorted[2] == sorted[3]) ||
+		 (sorted[2] == sorted[3] && sorted[3] == sorted[4]))
+	   three_of_a_kind ++;
+	 else if(sorted[0] != sorted[1] && sorted[1] != sorted[2] &&
+		 sorted[2] != sorted[3] && sorted[3] != sorted[4])
+	   all_different ++;
+	 else{
+	   // 1 or 2 pairs
+	   int pairs = 0;
+	   for(i = 1; i < 5; i ++)
+	     if(sorted[i] == sorted[i - 1])
+	       pairs ++;
+	   if(pairs == 1)
+	     one_pair ++;
+	   else if(pairs == 2)
+	     two_pairs ++;
+	 }
+       } // End of current hand
+       {// Measuring V after the hands:
+	 double V = 0;
+	 V += (((double) (all_different * all_different * 8192)) / 4095.0);
+	 V += (((double) (one_pair * one_pair * 16384)) / 6825.0);
+	 V += (((double) (two_pairs * two_pairs * 32768)) / 1575.0);
+	 V += (((double) (three_of_a_kind * three_of_a_kind * 16384)) / 525.0);
+	 V += (((double) (full_house * full_house * 32768)) / 75.0);
+	 V += (((double) (four_of_a_kind * four_of_a_kind * 65536)) / 75.0);
+	 V += ((double) (five_of_a_kind * five_of_a_kind * 65536));
+	 V /= ((double) n);
+	 V -= ((double) n);
+	 if(V < 0.8721 || V > 16.81)
+	   penalty += 2;
+	 else if(V < 1.635 || V > 12.59)
+	   penalty ++;
+	 if(penalty > 1){
+	   fails ++;
+	   break;
+	 }
+       }
+     } // End of three tests
+   } // End of all tests
+   quality("Quality of poker tests", (double) (1000 - fails) /
+	  (double) 1000);
+   _Wdestroy_rng(free, my_rng);
+ }
+ 
 void test_gap(void){
   int i;
   int fails = 0, all_tests;
@@ -467,8 +573,9 @@ int main(int argc, char **argv){
 #endif
   // Argument means: should reverse the obtained bits?
   //test_equidistribution();
-  test_serial();
+  //test_serial();
   //test_gap();
+  test_poker();
   imprime_resultado();
   return 0;
 }
