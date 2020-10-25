@@ -365,7 +365,26 @@ void test_serial(void){
   _Wdestroy_rng(free, my_rng);
 }
 
- void test_poker(void){
+/*void test_collector(void){
+  const int d = 16;
+  const int t = 51;
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
+  int thousand_tests, fails = 0, three_tests, penalty;
+  for(thousand_tests = 0; thousand_tests < 1000; thousand_tests ++){
+    penalty = 0;
+    for(three_tests = 0; three_tests < 3; three_tests ++){
+      // C1: Initialize:
+      
+      int s = 0, r;
+      for(r = d; r <= t; r ++)
+	count[r] = 0;
+    }
+  }
+  _Wdestroy_rng(free, my_rng);
+  }*/
+
+ 
+void test_poker(void){
    struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
    int all_tests, fails = 0, all_hands;
    const unsigned int n = 327080;
@@ -468,8 +487,9 @@ void test_serial(void){
    quality("Quality of poker tests", (double) (1000 - fails) /
 	  (double) 1000);
    _Wdestroy_rng(free, my_rng);
- }
- 
+}
+
+  
 void test_gap(void){
   int i;
   int fails = 0, all_tests;
@@ -547,7 +567,7 @@ void test_gap(void){
 	  (double) 1000);
   _Wdestroy_rng(free, my_rng);
 }
- 
+
 
 int main(int argc, char **argv){
   if(argc <= 1)

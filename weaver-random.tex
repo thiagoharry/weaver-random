@@ -722,7 +722,11 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), uint32_t seed){
       rng -> bits ++;
       max /= 2;
     }
+#ifdef __OpenBSD__
+    srand_deterministic((unsigned int) seed);
+#else
     srand((unsigned int) seed);
+#endif
     @<Inicialização de Mutex@>
   }
   return rng;
@@ -881,14 +885,16 @@ taxa de sucesso para nosos algoritmos:
 Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&92\%&&Xorshiro**&&91\%&\cr\linha
-&&PCG&&93\%&&\monoespaco{rand()}&&91\%&\cr\linha
+&&PCG&&93\%&&\monoespaco{rand()}&&94\%&\cr\linha
 &&ChaCha20&&93\%/94\%&&&&&\cr\linha}}
 
 
-odos os algoritmos testados apresentaram desempenho satisfatório neste
-teste mais básico. O valor inesperadamente alto do ChaCha2 aparenta
-ser uma flutuação. Testando ele repetidas vezes, os valores obtidos
-costumam ser muito mais próximos do esperado.
+Todos os algoritmos testados apresentaram desempenho satisfatório
+neste teste mais básico. O valor inesperadamente alto do ChaCha2
+aparenta ser uma flutuação: testando ele repetidas vezes, os valores
+obtidos costumam ser muito mais próximos do esperado. O mesmo não é
+válido para o gerador ISO padrão da linguagem C. Seus resultados estão
+consistentemente idealizados demais neste teste.
 
 \subsecao{3.2. Teste Serial}
 
@@ -910,11 +916,13 @@ aleatoriamente. O resultado obtido foi:
 Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&93\%&&Xorshiro**&&92\%&\cr\linha
-&&PCG&&90\%&&\monoespaco{rand()}&&91\%&\cr\linha
+&&PCG&&90\%&&\monoespaco{rand()}&&00\%&\cr\linha
 &&ChaCha20&&92\%&&&&&\cr\linha}}
 
-Todos os algoritmos recomendados tiveram desempenho esperado no test,
-com a flutuação do PCG estando ainda dentro do esperado.
+O algoritmo de referência do padrão ISO usado pela
+função \monoespaco{rand} falha catastroficamente neste teste. Os
+algoritmos recomendados tiveram desempenho esperado no teste, com a
+flutuação do PCG estando ainda dentro do esperado.
 
 \subsecao{3.3. Teste de lacuna}
 
@@ -948,12 +956,12 @@ aleatoriamente foi:
 Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&91\%&&Xorshiro**&&90\%&\cr\linha
-&&PCG&&93\%&&\monoespaco{rand()}&&91\%&\cr\linha
+&&PCG&&93\%&&\monoespaco{rand()}&&68\%&\cr\linha
 &&ChaCha20&&91\%&&&&&\cr\linha}}
 
-Novamente os testes ficaram próximos do valor esperado para todos os
-algoritmos, apenas com o Xorshro** tendo uma taxa muito ligeiramente
-menor de sucesso.
+Novamente com exceção do uso do \monoespaco{rand}, os testes ficaram
+próximos do valor esperado para todos os algoritmos, apenas com o
+Xorshro** tendo uma taxa ligeiramente menor de sucesso.
 
 \subsecao{3.4. Teste de Pôquer}
 
@@ -989,7 +997,7 @@ foi:
 Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&93\%&&Xorshiro**&&92\%&\cr\linha
-&&PCG&&92\%&&\monoespaco{rand()}&&90\%&\cr\linha
+&&PCG&&92\%&&\monoespaco{rand()}&&91\%&\cr\linha
 &&ChaCha20&&91\%&&&&&\cr\linha}}
 
 
