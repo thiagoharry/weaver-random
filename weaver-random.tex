@@ -1000,6 +1000,38 @@ Sucesso\hidewidth&&
 &&PCG&&92\%&&\monoespaco{rand()}&&91\%&\cr\linha
 &&ChaCha20&&91\%&&&&&\cr\linha}}
 
+\subsecao{3.4. Teste do Colecionador}
+
+Este teste é um complemento do anterior. Enquanto o anterior mostrava
+a equidistributividade de uma mão de pôquer, este tenta medir o quão
+aleatória é a ordem na qual obtemos cada valor de 4 bits. Geramos
+valores novos até que tenhamos gerado os 16 valores diferentes, quando
+encerramos. Fazemos isso um total de 4408394 vezes. E notamos em
+quantas dessas tentativas paramos de gerar novos valores por já termos
+obtido todos após 16, 17, $\ldots$, 115 ou 116+ tentativas. O teste
+compara então a quantidade que cada caso ocorreu comparando com o
+esperado.
+
+Para a semente 3499714725 escolhida aleatoriamente, o nosso resultado
+foi:
+
+\vbox{%A forma mais gseral de remover espaçamento entre linhas:
+\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
+\def\linha{\noalign{\hrule}}
+\def\hidewidth{\hskip-1000pt plus 1fill}
+\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
+\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
+\hfil#& \vrule#& \hfil#\hfil& \vrule#&
+\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
+&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+Sucesso\hidewidth&&
+\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+&&SFMT&&93\%&&Xorshiro**&&91\%&\cr\linha
+&&PCG&&93\%&&\monoespaco{rand()}&&00\%&\cr\linha
+&&ChaCha20&&92\%&&&&&\cr\linha}}
+
+Mais uma vez o algoritmo da biblioteca padrão tem um desempenho
+catastrófico, mas os demais demonstram uma qualidade equivalente.
 
 \secao{4. Medida de Desempenho}
 

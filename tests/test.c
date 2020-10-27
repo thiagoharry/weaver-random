@@ -365,23 +365,91 @@ void test_serial(void){
   _Wdestroy_rng(free, my_rng);
 }
 
-/*void test_collector(void){
+void test_collector(void){
   const int d = 16;
-  const int t = 51;
+  const int t = 116;
+  // Recompute if d or t are changed:
+  double expect[101] = {881657.9515664614, 117554.3935421949, 28862.4597955261, 9834.6159303274, 4151.8471814280, 2043.8330495174, 1130.2241210724, 684.7723865789, 446.5752400178, 309.4014816677, 225.4720134293, 171.4810062499, 135.2665663802, 110.1098645734, 92.1136805065, 78.9202502949, 69.0498996206, 61.5437070165, 55.7624048321, 51.2690472285, 47.7583139840, 45.0126672746, 42.8744459230, 41.2276812535, 39.9859923191, 39.0843700984, 38.4735017234, 38.1157857221, 37.9824931025, 38.0517176836, 38.3068784058, 38.7356132332, 39.3289546220, 40.0807100406, 40.9869936498, 42.0458707346, 43.2570872144, 44.6218640874, 46.1427420087, 47.8234650383, 49.6688953706, 51.6849528952, 53.8785749364, 56.2576926473, 58.8312213708, 61.6090629272, 64.6021182752, 67.8223093754, 71.2826093822, 74.9970805244, 78.9809192229, 83.2505081438, 87.8234750126, 92.7187581160, 97.9566785071, 103.5590190039, 109.5491101400, 115.9519232839, 122.7941711985, 130.1044163646, 137.9131874391, 146.2531042688, 155.1590119228, 164.6681242584, 174.8201775780, 185.6575949861, 197.2256621031, 209.5727148437, 222.7503400260, 236.8135896260, 251.8212095602, 267.8358839344, 284.9244957684, 303.1584052718, 322.6137468258, 343.3717458982, 365.5190572106, 389.1481255582, 414.3575707844, 441.2525985090, 469.9454383189, 500.5558112444, 533.2114284663, 568.0485233301, 605.2124188820, 644.8581332899, 687.1510256710, 732.2674850155, 780.3956650755, 831.7362682813, 886.5033819494, 944.9253702669, 1007.2458257671, 1073.7245842616, 1144.6388074560, 1220.2841377602, 1300.9759301053, 1387.0505658986, 1478.8668545906, 1576.8075286957, 104.7974528089};
+  // Also recompute if d or t are changed:
+  unsigned long n = 4408394ul;
   struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
   int thousand_tests, fails = 0, three_tests, penalty;
+  int bits = 0, card;
+  uint32_t value;
   for(thousand_tests = 0; thousand_tests < 1000; thousand_tests ++){
     penalty = 0;
     for(three_tests = 0; three_tests < 3; three_tests ++){
       // C1: Initialize:
-      
-      int s = 0, r;
-      for(r = d; r <= t; r ++)
+      unsigned long s;
+      int r;
+      unsigned long count[t+1];
+      for(r = 0; r <= t; r ++)
 	count[r] = 0;
+      for(s = 0; s < n; s ++){
+	// C2: Set q=r=0
+	int k, q = 0;
+	int r = 0;
+	int occurs[d];
+	for(k = 0; k < d; k ++)
+	  occurs[k] = 0;
+	while(q < d){
+	  // C3: Next observation:
+	  r ++;
+	  // Observation
+	  if(bits == 0){
+	    value = _Wrand(my_rng);
+	    card = value % 16;
+	    value = value >> 4;
+	    bits = 28;	    
+	  }
+	  else{
+	    card = value % 16;
+	    value = value >> 4;
+	    bits -= 4;	    
+	  }
+	  if(occurs[card] != 0)
+	    continue; // Repeated card
+	  // C4: Completed?
+	  occurs[card] = 1;
+	  q ++;
+	}
+	// C5: Register size:
+	if(r >= t)
+	  count[t] ++;
+	else
+	  count[r] ++;
+      } // Loop gettng all values
+      { // Computing V:
+	int i, v = t - d;
+	double V = 0;
+	double too_bad = v - (2.33 * sqrt(2 * v)) + ((2.33 * 2.33 * 2.0) / 3.0) -
+	  0.66666666;
+	double little_bad = v - (1.64 * sqrt(2 * v)) +
+	  ((1.64 * 1.64 * 2.0) / 3.0) - 0.66666666;
+	double little_ideal = v + (1.64 * sqrt(2 * v)) +
+	  ((1.64 * 1.64 * 2.0) / 3.0) - 0.66666666;
+	double too_ideal = v + (2.33 * sqrt(2 * v)) +
+	  ((2.33 * 2.33 * 2.0) / 3.0) - 0.66666666;
+	for(i = d; i <= t; i ++){
+	  V += ((double) (count[i] * count [i])) * expect[i-d];
+	}
+	V /= ((double) n);
+	V -= ((double) n);
+	if(V < too_bad || V > too_ideal)
+	  penalty += 2;
+	else if(V < little_bad || V > little_ideal)
+	  penalty ++;
+	if(penalty > 1){
+	  fails ++;
+	  break;
+	} 
+      }
     }
   }
+  quality("Quality of collectors tests", (double) (1000 - fails) /
+	  (double) 1000);
   _Wdestroy_rng(free, my_rng);
-  }*/
+}
 
  
 void test_poker(void){
@@ -595,7 +663,8 @@ int main(int argc, char **argv){
   //test_equidistribution();
   //test_serial();
   //test_gap();
-  test_poker();
+  //test_poker();
+  test_collector();
   imprime_resultado();
   return 0;
 }

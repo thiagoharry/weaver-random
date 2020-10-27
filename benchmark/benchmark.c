@@ -50,7 +50,6 @@ void measure_rand(void){
   int i, j;
   for(i = 0; i < N; i ++){
     TIMER_BEGIN();
-    for(j = 0; j < 1000; j++)
     v = _Wrand(rng);
     TIMER_END();
   }
