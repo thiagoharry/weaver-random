@@ -23,24 +23,117 @@ int numero_de_testes = 0, acertos = 0, falhas = 0;
 #include "pcg.c"
 #endif
 
+// Todo: fix when size in bits does not divide 32
+uint32_t rng_value;
+int rng_bit, rng_bits = 0;
+int read_random_bits(struct _Wrng *my_rng, int size_in_bits){
+  int result = 0;
+  if(rng_bits == 0){
+    rng_value = _Wrand(my_rng);
+    result = rng_value % (1 << size_in_bits);
+    rng_value = rng_value >> (size_in_bits);
+    rng_bits = 32 - size_in_bits;    
+  }
+  else if(size_in_bits > rng_bits){
+    result = rng_value;
+    result = result << (size_in_bits - rng_bits);
+    rng_value = _Wrand(my_rng);
+    result += rng_value % (1 << (size_in_bits - rng_bits));
+    rng_value = rng_value >> (size_in_bits - rng_bits);
+    rng_bits = 32 - (size_in_bits - rng_bits);
+  }
+  else{
+    result = rng_value % (1 << size_in_bits);
+    rng_value = rng_value >> (size_in_bits);
+    rng_bits -= size_in_bits;    
+  }
+  return result;
+}
+
+const double table_un[] = { // Chi-square table
+  0.00016, 0.00393, 3.841, 6.635, //v=1
+  0.02010, 0.1026, 5.991, 9.210, //v=2
+  0.1148, 0.3518, 7.815, 11.34, //v=3
+  0.2971, 0.7107, 9.488, 13,28, //v=4
+  0.5543, 1.1455, 11.07, 15.09, // v=5
+  0.8721, 1.635, 12.59, 16.81, // v=6
+  1.239, 2.167, 14.07, 18.48, //v=7
+  1.646, 2.733, 15.51, 20.09,  //v=8
+  2.088, 3.325, 16.92, 21.67, //v=9
+  2.558, 3.940, 18.31, 23.21, // v=10
+  3.053, 4.575, 19.68, 24.72, // v=11
+  3.571, 5.226, 21.03, 26.22 //v=12
+};
+
+int chi_square_uniform(int number_of_cases, unsigned long *observed){
+  unsigned long long n = 0;
+  double V = 0.0;
+  int i, v = number_of_cases - 1;
+  for(i = 0; i < number_of_cases; i ++)
+    n += observed[i];
+  for(i = 0; i < number_of_cases; i ++)
+    V += (double) (observed[i] * observed[i] * number_of_cases);
+  V /= (double) n;
+  V -= n;
+  if(v <= 12){
+    if(V < table_un[(v - 1) * 4] || V > table_un[(v - 1) * 4 + 3])
+      return 2;
+    else if(V < table_un[(v - 1) * 4 + 1] || V > table_un[(v - 1) * 4 + 2])
+      return 1;
+    else
+      return 0;
+  }
+  if(v == 15){
+    if(V < 5.229 || V > 30.58)
+      return 2;
+    else if(V < 7.261 || V > 25.00)
+      return 1;
+    else
+      return 0;
+  }
+  if(v == 20){
+    if(V < 8.260 || V > 37.57)
+      return 2;
+    else if(V < 10.85 || V > 31.41)
+      return 1;
+    else
+      return 0;
+  }
+  if(v == 30){
+    if(V < 14.95 || V > 50.89)
+      return 2;
+    else if(V < 18.49 || V > 43.77)
+      return 1;
+    else
+      return 0;
+  }
+  if(v == 50){
+    if(V < 14.95 || V > 50.89)
+      return 2;
+    else if(V < 18.49 || V > 43.77)
+      return 1;
+    else
+      return 0;
+  }
+  else{
+    if(v < 30)
+      fprintf(stderr, "\nERROR: Chi-square test with unsupported value.\n");
+    if(V < v - sqrt(2 * v) * 2.33 + 2.9526 ||
+       V > v + sqrt(2 * v) * 2.33 + 2.9526)
+      return 2;
+    else if(V < v - sqrt(2 * v) * 1.64 + 1.1264 ||
+	    V > v + sqrt(2 * v) * 1.64 + 1.1264)
+      return 1;
+    else
+      return 0;
+  }
+}
+
+
 int chi_square(int number_of_cases, unsigned long *observed, double *probability){
   unsigned long long n = 0;
   double V = 0.0;
   int i, v = number_of_cases - 1;
-  double table_un[] = {
-    0.00016, 0.00393, 3.841, 6.635, //v=1
-    0.02010, 0.1026, 5.991, 9.210, //v=2
-    0.1148, 0.3518, 7.815, 11.34, //v=3
-    0.2971, 0.7107, 9.488, 13,28, //v=4
-    0.5543, 1.1455, 11.07, 15.09, // v=5
-    0.8721, 1.635, 12.59, 16.81, // v=6
-    1.239, 2.167, 14.07, 18.48, //v=7
-    1.646, 2.733, 15.51, 20.09,  //v=8
-    2.088, 3.325, 16.92, 21.67, //v=9
-    2.558, 3.940, 18.31, 23.21, // v=10
-    3.053, 4.575, 19.68, 24.72, // v=11
-    3.571, 5.226, 21.03, 26.22 //v=12
-  };
   for(i = 0; i < number_of_cases; i ++)
     n += observed[i];
   for(i = 0; i < number_of_cases; i ++)
@@ -319,55 +412,20 @@ uint32_t reverse(uint32_t x){
   return x;
 }
 
-
 void test_equidistribution(void){
   struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
   int i, three_tests, all_tests;
   int penalty, fails = 0;
-  uint32_t value;
-  int bit, bits = 0;
   const int n = 10000;
-  // F(x) = Pr(X <= x)
-  // F_n(x) = (Número de X_1, ... X_n menores que x) / n
-  // K_n+ = \sqrt(n) max_{x \in R} (F_n(x)-F(x)) ; Maior desvio pra cima
-  // K_n- = \sqrt(n) max_{x \in R} (F(x)-F_n(x)) ; Maior desvio pra baixo
   for(all_tests = 0; all_tests < 1000; all_tests ++){
     // Repeating the tests 3 times:
     penalty = 0;
     for(three_tests = 0; three_tests < 3; three_tests ++){
-      //unsigned long number_of_ones = 0, number_of_zeros = 0;
-      unsigned long values[2];
-      double probability[2];
-      //double V;
-      values[0] = 0;
-      values[1] = 0;
-      probability[0] = probability[1] = 0.5;
+      unsigned long values[2] = {0, 0};
       // Measuring n generations:
-      for(i = 0; i < n; i ++){
-	if(bits == 0){
-	  value = _Wrand(my_rng);
-	  bit = value % 2;
-	  value = value >> 1;
-	  bits = 31;
-	}
-	else{
-	  bit = value % 2;
-	  value = value >> 1;
-	  bits --;
-	}
-	values[bit] ++;
-	//if(bit == 1) number_of_ones ++;
-	//else number_of_zeros ++;
-      }
-      //V = ((double) ((number_of_zeros * number_of_zeros * 2) +
-      //	     (number_of_ones * number_of_ones * 2)));
-      //V = V / ((double) n);
-      //V -= ((double) n);
-      //if(V < 0.00016 || V > 6.635)
-      //penalty += 2;
-      //else if(V < 0.00393 || V > 3.841)
-      //penalty ++;
-      penalty += chi_square(2, values, probability);
+      for(i = 0; i < n; i ++)
+	values[read_random_bits(my_rng, 1)] ++;
+      penalty += chi_square_uniform(2, values);
       if(penalty > 1){
 	fails ++;
 	break;
@@ -385,63 +443,19 @@ void test_serial(void){
   int penalty, fails = 0;
   const int size = 15;
   const int serie = (1 << size);
-  unsigned int measures[serie]; // 2^20 values
+  unsigned long measures[serie]; // 2^20 values
   const unsigned long long n =  (5 * serie);
-  double  v = (serie - 1);
-  uint32_t value;
-  int bit, bits = 0;
-  double too_bad = v - (2.33 * sqrt(2 * v)) + ((2.33 * 2.33 * 2.0) / 3.0) -
-    0.66666666;
-  double little_bad = v - (1.64 * sqrt(2 * v)) + ((1.64 * 1.64 * 2.0) / 3.0) -
-    0.66666666;
-  double little_ideal = v + (1.64 * sqrt(2 * v)) + ((1.64 * 1.64 * 2.0) / 3.0) -
-    0.66666666;
-  double too_ideal = v + (2.33 * sqrt(2 * v)) + ((2.33 * 2.33 * 2.0) / 3.0) -
-    0.66666666;
   for(total_tests = 0; total_tests < 1000; total_tests ++){
     penalty = 0;
     for(three_tests = 0; three_tests < 3; three_tests ++){
-      //printf("Teste %d/3\n", three_tests + 1);
       for(i = 0; i < serie; i ++)
 	measures[i] = 0;
-      for(round_of_measures = 0; round_of_measures < n; round_of_measures ++){
-	// Getting 'size' bits:
-	int result = 0;
-	for(i = 0; i < size; i ++){
-	  if(bits == 0){
-	    value = _Wrand(my_rng);
-	    bit = value % 2;
-	    value = value >> 1;
-	    bits = 31;	    
-	  }
-	  else{
-	    bit = value % 2;
-	    value = value >> 1;
-	    bits --;	    
-	  }
-	  result = result << 1;
-	  result += bit;
-	}
-	measures[result] ++;
-      }
-      {// Computing V:
-	double V = 0.0;
-	unsigned long long sum = 0;
-	for(i = 0; i < serie; i ++)
-	  sum += measures[i] * measures[i] * serie;
-	V = ((double) sum) / ((double) n);
-	V -= n;
-	//printf("penalty: %d\n", penalty);
-	//printf("%f %f | %f %f\n", too_bad, little_bad, little_ideal, too_ideal);
-	//printf("V: %f\n", V);
-	if(V < too_bad || V > too_ideal)
-	  penalty += 2;
-	else if(V < little_bad || V > little_ideal)
-	  penalty ++;
-	if(penalty >= 2){
-	  fails ++;
-	  break;
-	}
+      for(round_of_measures = 0; round_of_measures < n; round_of_measures ++)
+	measures[read_random_bits(my_rng, 15)] ++;
+      penalty += chi_square_uniform(serie, measures);
+      if(penalty >= 2){
+	fails ++;
+	break;
       }
     } // End of three tests
   } // End of total_tests
