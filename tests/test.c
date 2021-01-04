@@ -23,6 +23,84 @@ int numero_de_testes = 0, acertos = 0, falhas = 0;
 #include "pcg.c"
 #endif
 
+int chi_square(int number_of_cases, unsigned long *observed, double *probability){
+  unsigned long long n = 0;
+  double V = 0.0;
+  int i, v = number_of_cases - 1;
+  double table_un[] = {
+    0.00016, 0.00393, 3.841, 6.635, //v=1
+    0.02010, 0.1026, 5.991, 9.210, //v=2
+    0.1148, 0.3518, 7.815, 11.34, //v=3
+    0.2971, 0.7107, 9.488, 13,28, //v=4
+    0.5543, 1.1455, 11.07, 15.09, // v=5
+    0.8721, 1.635, 12.59, 16.81, // v=6
+    1.239, 2.167, 14.07, 18.48, //v=7
+    1.646, 2.733, 15.51, 20.09,  //v=8
+    2.088, 3.325, 16.92, 21.67, //v=9
+    2.558, 3.940, 18.31, 23.21, // v=10
+    3.053, 4.575, 19.68, 24.72, // v=11
+    3.571, 5.226, 21.03, 26.22 //v=12
+  };
+  for(i = 0; i < number_of_cases; i ++)
+    n += observed[i];
+  for(i = 0; i < number_of_cases; i ++)
+    V += ((double) (observed[i] * observed[i])) / probability[i];
+  V /= (double) n;
+  V -= n;
+  if(v <= 12){
+    if(V < table_un[(v - 1) * 4] || V > table_un[(v - 1) * 4 + 3])
+      return 2;
+    else if(V < table_un[(v - 1) * 4 + 1] || V > table_un[(v - 1) * 4 + 2])
+      return 1;
+    else
+      return 0;
+  }
+  if(v == 15){
+    if(V < 5.229 || V > 30.58)
+      return 2;
+    else if(V < 7.261 || V > 25.00)
+      return 1;
+    else
+      return 0;
+  }
+  if(v == 20){
+    if(V < 8.260 || V > 37.57)
+      return 2;
+    else if(V < 10.85 || V > 31.41)
+      return 1;
+    else
+      return 0;
+  }
+  if(v == 30){
+    if(V < 14.95 || V > 50.89)
+      return 2;
+    else if(V < 18.49 || V > 43.77)
+      return 1;
+    else
+      return 0;
+  }
+  if(v == 50){
+    if(V < 14.95 || V > 50.89)
+      return 2;
+    else if(V < 18.49 || V > 43.77)
+      return 1;
+    else
+      return 0;
+  }
+  else{
+    if(v < 30)
+      fprintf(stderr, "\nERROR: Chi-square test with unsupported value.\n");
+    if(V < v - sqrt(2 * v) * 2.33 + 2.9526 ||
+       V > v + sqrt(2 * v) * 2.33 + 2.9526)
+      return 2;
+    else if(V < v - sqrt(2 * v) * 1.64 + 1.1264 ||
+	    V > v + sqrt(2 * v) * 1.64 + 1.1264)
+      return 1;
+    else
+      return 0;
+  }
+}
+
 size_t count_utf8_code_points(const char *s) {
     size_t count = 0;
     while (*s) {
@@ -257,8 +335,13 @@ void test_equidistribution(void){
     // Repeating the tests 3 times:
     penalty = 0;
     for(three_tests = 0; three_tests < 3; three_tests ++){
-      unsigned long number_of_ones = 0, number_of_zeros = 0;
-      double V;
+      //unsigned long number_of_ones = 0, number_of_zeros = 0;
+      unsigned long values[2];
+      double probability[2];
+      //double V;
+      values[0] = 0;
+      values[1] = 0;
+      probability[0] = probability[1] = 0.5;
       // Measuring n generations:
       for(i = 0; i < n; i ++){
 	if(bits == 0){
@@ -272,17 +355,19 @@ void test_equidistribution(void){
 	  value = value >> 1;
 	  bits --;
 	}
-	if(bit == 1) number_of_ones ++;
-	else number_of_zeros ++;
+	values[bit] ++;
+	//if(bit == 1) number_of_ones ++;
+	//else number_of_zeros ++;
       }
-      V = ((double) ((number_of_zeros * number_of_zeros * 2) +
-		     (number_of_ones * number_of_ones * 2)));
-      V = V / ((double) n);
-      V -= ((double) n);
-      if(V < 0.00016 || V > 6.635)
-	penalty += 2;
-      else if(V < 0.00393 || V > 3.841)
-	penalty ++;
+      //V = ((double) ((number_of_zeros * number_of_zeros * 2) +
+      //	     (number_of_ones * number_of_ones * 2)));
+      //V = V / ((double) n);
+      //V -= ((double) n);
+      //if(V < 0.00016 || V > 6.635)
+      //penalty += 2;
+      //else if(V < 0.00393 || V > 3.841)
+      //penalty ++;
+      penalty += chi_square(2, values, probability);
       if(penalty > 1){
 	fails ++;
 	break;
@@ -556,7 +641,6 @@ void test_poker(void){
 	  (double) 1000);
    _Wdestroy_rng(free, my_rng);
 }
-
   
 void test_gap(void){
   int i;
@@ -636,6 +720,131 @@ void test_gap(void){
   _Wdestroy_rng(free, my_rng);
 }
 
+unsigned long long fatorial(int n){
+  unsigned long long r = 1;
+  int i;
+  for(i = 2; i <= n; i ++)
+    r *= i;
+  return r;
+}
+ 
+void test_permutation(void){
+  const int BITS_TESTED = 3;
+  int fails = 0, all_tests;
+  int bits = 0;
+  int three_tests, penalty;
+  unsigned long long i;
+  uint32_t value;
+  const unsigned long long  n = 5 * fatorial(1 << BITS_TESTED);
+  const unsigned long long  v = (n/5)-1;
+  double too_ideal = v - (2.33 * sqrt(2 * v)) + ((2.33 * 2.33 * 2.0) / 3.0) -
+    0.66666666;
+  double little_ideal = v - (1.64 * sqrt(2 * v)) + ((1.64 * 1.64 * 2.0) / 3.0) -
+    0.66666666;
+  double little_bad = v + (1.64 * sqrt(2 * v)) + ((1.64 * 1.64 * 2.0) / 3.0) -
+    0.66666666;
+  double too_bad = v + (2.33 * sqrt(2 * v)) + ((2.33 * 2.33 * 2.0) / 3.0) -
+    0.66666666;
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
+  for(all_tests = 0; all_tests < 1000; all_tests ++){
+     //printf("%d,%d%%\n", all_tests / 10, all_tests % 10);
+    penalty = 0;
+    for(three_tests = 0; three_tests < 3; three_tests ++){
+      //printf("3_tests: %d\n", three_tests);
+      unsigned long long n_tests;
+      int count[n/5];
+      double V = 0.0;
+       for(i = 0; i < n/5; i ++)
+	 count[i] = 0;
+       for(n_tests = 0; n_tests < n; n_tests ++){
+	 //printf("n_test: %d/%d\n", n_tests, n);
+	 // Generating the list
+	 int U[1 << BITS_TESTED];
+	 int gen = 0, control = 0;
+	 //printf("Gerar lista...\n");
+	 while(control != (1 << (1 << BITS_TESTED)) - 1){
+	   if(bits < BITS_TESTED){
+	     if(bits > 0){
+	       U[gen] = value % (1 << (bits));
+	       U[gen] = U[gen] << (BITS_TESTED - bits);
+	     }
+	     value = _Wrand(my_rng);
+	     U[gen] = value % (1 << (BITS_TESTED - bits)); 
+	     value = value >> (BITS_TESTED - bits);
+	     bits = 32 - BITS_TESTED + bits;
+	   }
+	   else{
+	     U[gen] = value % (1 << BITS_TESTED); 
+	     value = value >> BITS_TESTED;
+	     bits -= BITS_TESTED;	    
+	   }
+	   //printf("Gerado %d [%d]\n", U[gen], control);
+	   //getchar();
+	   if(!(control & (1 << (U[gen])))){
+	     control = control | (1 << U[gen]);
+	     gen ++;
+	     //printf("Control: %d\n", control);
+	   }
+	 }
+	 //printf("Seq ok\n");
+	 //printf("Calculando...\n");
+	 // P1: Initialize:
+	 int r, t = (1 << BITS_TESTED); // Size of list
+	 unsigned long long f = 0;
+	 //for(i = 0; i < (1 << BITS_TESTED); i ++)
+	 //  printf("%d ", U[i]);
+	 for(r = t - 1; r > 0; r --){
+	   // P2: Find maximum:
+	   int max = -1, index = 0, i;
+	   for(i = 0; i <= r; i ++){
+	     if(U[i] > max){
+	       max = U[i];
+	       index = i;
+	     }
+	   }
+	   f = f * (r + 1) + index;
+	   // P3: Exchange;
+	   U[index] = U[r];
+	   U[r] = max;
+	 }
+	 // Now f is a number representing the permutation
+	 //printf("%llu\n", f);
+	 count[f] ++;
+	 //printf("f = %llu\n", f);
+       } // End of n_tests
+       // Chi-square test
+       {
+	 unsigned long long total = 0;
+	 for(i = 0; i < n/5; i ++){
+	   total += count[i] * count[i] * (n/5);
+	   //if(count[i] == 0)
+	   //printf(" count[%d]=%d ", i, count[i]);
+	     //tot ++;
+	     
+	 }
+	 //printf("Sem nada: %llu\n", tot);
+	 //printf("\n");
+	 V = ((double) total) / ((double) n);
+	 V -= n;	 
+       }
+       //printf("\n---\n");
+       printf("V=%f [%f %f | %f %f]\n", V, too_ideal, little_ideal, little_bad,
+	      too_bad);
+       //getchar();
+       if(V < too_bad || V > too_ideal)
+	 penalty += 2;
+       else if(V < little_bad || V > little_ideal)
+	 penalty ++;
+       if(penalty >= 2){
+	 fails ++;
+	 break;
+       }
+     } // End of three tests
+   } // End of all tests
+   quality("Quality of permutation test", (double) (1000 - fails) /
+	  (double) 1000);
+   _Wdestroy_rng(free, my_rng);
+}
 
 int main(int argc, char **argv){
   if(argc <= 1)
@@ -660,11 +869,12 @@ int main(int argc, char **argv){
   test_multithread();
 #endif
   // Argument means: should reverse the obtained bits?
-  //test_equidistribution();
+  test_equidistribution();
   //test_serial();
   //test_gap();
   //test_poker();
-  test_collector();
+  //test_collector();
+  //test_permutation();
   imprime_resultado();
   return 0;
 }
