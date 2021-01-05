@@ -900,7 +900,7 @@ consistentemente idealizados demais neste teste.
 
 O teste serial consiste em gerar sequências de $d$ bits e verificar se
 cada combinação possível ocorre com uma proporção semelhante a
-$1/d^2$. No nosso caso escolhemos $d=15$ (propositalmetne um valor
+$1/2^d$. No nosso caso escolhemos $d=15$ (propositalmetne um valor
 primo em relação a 32) e usamos a semente 171330726 escolhida
 aleatoriamente. O resultado obtido foi:
 
@@ -956,8 +956,8 @@ aleatoriamente foi:
 Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&91\%&&Xorshiro**&&90\%&\cr\linha
-&&PCG&&93\%&&\monoespaco{rand()}&&68\%&\cr\linha
-&&ChaCha20&&91\%&&&&&\cr\linha}}
+&&PCG&&92\%&&\monoespaco{rand()}&&70\%&\cr\linha
+&&ChaCha20&&92\%&&&&&\cr\linha}}
 
 Novamente com exceção do uso do \monoespaco{rand}, os testes ficaram
 próximos do valor esperado para todos os algoritmos, apenas com o

@@ -117,7 +117,8 @@ int chi_square_uniform(int number_of_cases, unsigned long *observed){
   }
   else{
     if(v < 30)
-      fprintf(stderr, "\nERROR: Chi-square test with unsupported value.\n");
+      fprintf(stderr, "\nERROR: Chi-square test with unsupported value (%d).\n",
+	      v);
     if(V < v - sqrt(2 * v) * 2.33 + 2.9526 ||
        V > v + sqrt(2 * v) * 2.33 + 2.9526)
       return 2;
@@ -130,14 +131,14 @@ int chi_square_uniform(int number_of_cases, unsigned long *observed){
 }
 
 
-int chi_square(int number_of_cases, unsigned long *observed, double *probability){
+int chi_square(int number_of_cases, unsigned long *observed, unsigned long *inv){
   unsigned long long n = 0;
   double V = 0.0;
   int i, v = number_of_cases - 1;
   for(i = 0; i < number_of_cases; i ++)
     n += observed[i];
   for(i = 0; i < number_of_cases; i ++)
-    V += ((double) (observed[i] * observed[i])) / probability[i];
+    V += (double) (observed[i] * observed[i] * inv[i]);
   V /= (double) n;
   V -= n;
   if(v <= 12){
@@ -182,7 +183,8 @@ int chi_square(int number_of_cases, unsigned long *observed, double *probability
   }
   else{
     if(v < 30)
-      fprintf(stderr, "\nERROR: Chi-square test with unsupported value.\n");
+      fprintf(stderr, "\nERROR: Chi-square test with unsupported value (%d).\n",
+	      v);
     if(V < v - sqrt(2 * v) * 2.33 + 2.9526 ||
        V > v + sqrt(2 * v) * 2.33 + 2.9526)
       return 2;
@@ -657,72 +659,34 @@ void test_poker(void){
 }
   
 void test_gap(void){
-  int i;
-  int fails = 0, all_tests;
+  int i, fails = 0, all_tests, three_tests, penalty;
   struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
-  int three_tests, penalty;
-  uint32_t Uj;
-  int bits = 0, bit;
   for(all_tests = 0; all_tests < 1000; all_tests ++){
     penalty = 0;
     for(three_tests = 0; three_tests < 3; three_tests ++){
-      // G1: Initialize:
-      unsigned long s = 0, r;
-      const unsigned t = 19;
-      unsigned long count[t + 1];
-      unsigned long n = ((1 << t) * 5);
-      for(i = 0; i <= t; i ++)
+      // G1: 
+      const unsigned t = 20;
+      unsigned long count[t + 1], inv[t + 1], s = 0, r, n = ((1 << t) * 5);
+      for(i = 0; i <= t; i ++){
 	count[i] = 0;
+	inv[i] = (i<t)?(2 * (1 << i)):(1 << i);
+      }
       // G2: Set r zero:
       r = 0;
       do{
 	// G3: [a <= Uj < B?]:
-	if(bits == 0){
-	  Uj = _Wrand(my_rng);
-	  bit = Uj % 2;
-	  Uj = Uj >> 1;
-	  bits = 31;
-	}
-	else{
-	  bit = Uj % 2;
-	  Uj = Uj >> 1;
-	  bits --;
-	}
-	if(bit == 0){
+	if(read_random_bits(my_rng, 1) == 0){
 	  // G4: Increase r
 	  r ++;
 	  continue;
 	}
-	else{
-	  // G5: Record the gap length:
-	  if(r >= t)
-	    count[t] ++;
-	  else
-	    count[r] ++;
-	}
+	else // G5: Record the gap length:
+	    count[(r>=t)?(t):(r)] ++;
 	// G6: n gaps found?
 	r = 0;
 	s ++;
       }while(s < n);    
-      {// Computing chi-square test in count[]:
-	unsigned long sum = 0;
-	double V;
-	for(i = 0; i < t + 1; i ++){
-	  //printf("%d: {%lu} ", i, count[i]);
-	  if(i < t){
-	    sum += (count[i] * count[i] * (2 * (1 << i)));
-	  }
-	  else{
-	    sum += (count[i] * count[i] * (1 << i));
-	  }
-	}
-	V = ((double) sum) / ((double) n);
-	V -= ((double) n);
-	if(V < 8.260 || V > 37.57)
-	  penalty += 2;
-	else if(V < 10.85 || V > 31.41)
-	  penalty ++;
-      }
+      penalty += chi_square(t + 1, count, inv);
       if(penalty >= 2){
 	fails ++;
 	break;
@@ -883,9 +847,9 @@ int main(int argc, char **argv){
   test_multithread();
 #endif
   // Argument means: should reverse the obtained bits?
-  test_equidistribution();
+  //test_equidistribution();
   //test_serial();
-  //test_gap();
+  test_gap();
   //test_poker();
   //test_collector();
   //test_permutation();
