@@ -65,80 +65,15 @@ const double table_un[] = { // Chi-square table
   3.571, 5.226, 21.03, 26.22 //v=12
 };
 
-int chi_square_uniform(int number_of_cases, unsigned long *observed){
+int chi_square(int number_of_cases, unsigned long *observed, double *prob){
   unsigned long long n = 0;
   double V = 0.0;
   int i, v = number_of_cases - 1;
   for(i = 0; i < number_of_cases; i ++)
     n += observed[i];
   for(i = 0; i < number_of_cases; i ++)
-    V += (double) (observed[i] * observed[i] * number_of_cases);
-  V /= (double) n;
-  V -= n;
-  if(v <= 12){
-    if(V < table_un[(v - 1) * 4] || V > table_un[(v - 1) * 4 + 3])
-      return 2;
-    else if(V < table_un[(v - 1) * 4 + 1] || V > table_un[(v - 1) * 4 + 2])
-      return 1;
-    else
-      return 0;
-  }
-  if(v == 15){
-    if(V < 5.229 || V > 30.58)
-      return 2;
-    else if(V < 7.261 || V > 25.00)
-      return 1;
-    else
-      return 0;
-  }
-  if(v == 20){
-    if(V < 8.260 || V > 37.57)
-      return 2;
-    else if(V < 10.85 || V > 31.41)
-      return 1;
-    else
-      return 0;
-  }
-  if(v == 30){
-    if(V < 14.95 || V > 50.89)
-      return 2;
-    else if(V < 18.49 || V > 43.77)
-      return 1;
-    else
-      return 0;
-  }
-  if(v == 50){
-    if(V < 14.95 || V > 50.89)
-      return 2;
-    else if(V < 18.49 || V > 43.77)
-      return 1;
-    else
-      return 0;
-  }
-  else{
-    if(v < 30)
-      fprintf(stderr, "\nERROR: Chi-square test with unsupported value (%d).\n",
-	      v);
-    if(V < v - sqrt(2 * v) * 2.33 + 2.9526 ||
-       V > v + sqrt(2 * v) * 2.33 + 2.9526)
-      return 2;
-    else if(V < v - sqrt(2 * v) * 1.64 + 1.1264 ||
-	    V > v + sqrt(2 * v) * 1.64 + 1.1264)
-      return 1;
-    else
-      return 0;
-  }
-}
-
-
-int chi_square(int number_of_cases, unsigned long *observed, unsigned long *inv){
-  unsigned long long n = 0;
-  double V = 0.0;
-  int i, v = number_of_cases - 1;
-  for(i = 0; i < number_of_cases; i ++)
-    n += observed[i];
-  for(i = 0; i < number_of_cases; i ++)
-    V += (double) (observed[i] * observed[i] * inv[i]);
+    V += (double) (observed[i] * observed[i] *
+		   ((prob==NULL)?(number_of_cases):(1.0 / prob[i])));
   V /= (double) n;
   V -= n;
   if(v <= 12){
@@ -427,7 +362,7 @@ void test_equidistribution(void){
       // Measuring n generations:
       for(i = 0; i < n; i ++)
 	values[read_random_bits(my_rng, 1)] ++;
-      penalty += chi_square_uniform(2, values);
+      penalty += chi_square(2, values, NULL);
       if(penalty > 1){
 	fails ++;
 	break;
@@ -454,7 +389,7 @@ void test_serial(void){
 	measures[i] = 0;
       for(round_of_measures = 0; round_of_measures < n; round_of_measures ++)
 	measures[read_random_bits(my_rng, 15)] ++;
-      penalty += chi_square_uniform(serie, measures);
+      penalty += chi_square(serie, measures, NULL);
       if(penalty >= 2){
 	fails ++;
 	break;
@@ -474,9 +409,7 @@ void test_collector(void){
   // Also recompute if d or t are changed:
   unsigned long n = 4408394ul;
   struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
-  int thousand_tests, fails = 0, three_tests, penalty;
-  int bits = 0, card;
-  uint32_t value;
+  int thousand_tests, fails = 0, three_tests, penalty, card;
   for(thousand_tests = 0; thousand_tests < 1000; thousand_tests ++){
     penalty = 0;
     for(three_tests = 0; three_tests < 3; three_tests ++){
@@ -497,17 +430,7 @@ void test_collector(void){
 	  // C3: Next observation:
 	  r ++;
 	  // Observation
-	  if(bits == 0){
-	    value = _Wrand(my_rng);
-	    card = value % 16;
-	    value = value >> 4;
-	    bits = 28;	    
-	  }
-	  else{
-	    card = value % 16;
-	    value = value >> 4;
-	    bits -= 4;	    
-	  }
+	  card = read_random_bits(my_rng, 4);
 	  if(occurs[card] != 0)
 	    continue; // Repeated card
 	  // C4: Completed?
@@ -557,8 +480,6 @@ void test_poker(void){
    struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
    int all_tests, fails = 0, all_hands;
    const unsigned int n = 327080;
-   uint32_t value;
-   int bits = 0;
    for(all_tests = 0; all_tests < 1000; all_tests ++){
      int penalty = 0, three_tests;
      for(three_tests = 0; three_tests < 3; three_tests ++){
@@ -573,19 +494,8 @@ void test_poker(void){
        // Iterating over tuples:
        for(all_hands = 0; all_hands < n; all_hands ++){
 	 int sorted[5];
-	 for(i = 0; i < 5; i ++){
-	   if(bits == 0){
-	     value = _Wrand(my_rng);
-	     sorted[i] = value % 16;
-	     value = value >> 4;
-	     bits = 28;	    
-	   }
-	   else{
-	     sorted[i] = value % 16;
-	     value = value >> 4;
-	     bits -= 4;	    
-	   }
-	 }
+	 for(i = 0; i < 5; i ++)
+	   sorted[i] = read_random_bits(my_rng, 4);
 	 // Now really sort the values:
 	 for(i = 0; i < 5; i ++){
 	   int index = i;
@@ -667,9 +577,11 @@ void test_gap(void){
       // G1: 
       const unsigned t = 20;
       unsigned long count[t + 1], inv[t + 1], s = 0, r, n = ((1 << t) * 5);
+      double prob[t+1];
       for(i = 0; i <= t; i ++){
 	count[i] = 0;
 	inv[i] = (i<t)?(2 * (1 << i)):(1 << i);
+	prob[i] = 1.0 / (double) inv[i];
       }
       // G2: Set r zero:
       r = 0;
@@ -686,7 +598,7 @@ void test_gap(void){
 	r = 0;
 	s ++;
       }while(s < n);    
-      penalty += chi_square(t + 1, count, inv);
+      penalty += chi_square(t + 1, count, prob);
       if(penalty >= 2){
 	fails ++;
 	break;
@@ -705,125 +617,264 @@ unsigned long long fatorial(int n){
     r *= i;
   return r;
 }
- 
+
+int permutation_identity(int quantity, int *U){
+  int r, i, f = 0; // P1
+  for(r = quantity - 1; r > 0; r --){
+    // P2: Find maximum:
+    int max = -1, index = -1;
+    for(i = 0; i <= r; i ++){
+      if(U[i] > max){
+	max = U[i];
+	index = i;
+      }
+    }
+    f = f * (r + 1) + index;
+    // P3: Exchange;
+    U[index] = U[r];
+    U[r] = max;
+  }// P4: Loop test
+  return f;
+}
 void test_permutation(void){
-  const int BITS_TESTED = 3;
-  int fails = 0, all_tests;
-  int bits = 0;
-  int three_tests, penalty;
+  const int BITS_TESTED = 3;// Counting permutations of {0, ..., 7}
+  int fails = 0, all_tests, three_tests, penalty;
   unsigned long long i;
-  uint32_t value;
-  const unsigned long long  n = 5 * fatorial(1 << BITS_TESTED);
-  const unsigned long long  v = (n/5)-1;
-  double too_ideal = v - (2.33 * sqrt(2 * v)) + ((2.33 * 2.33 * 2.0) / 3.0) -
-    0.66666666;
-  double little_ideal = v - (1.64 * sqrt(2 * v)) + ((1.64 * 1.64 * 2.0) / 3.0) -
-    0.66666666;
-  double little_bad = v + (1.64 * sqrt(2 * v)) + ((1.64 * 1.64 * 2.0) / 3.0) -
-    0.66666666;
-  double too_bad = v + (2.33 * sqrt(2 * v)) + ((2.33 * 2.33 * 2.0) / 3.0) -
-    0.66666666;
+  const unsigned long long  n = 5 * fatorial(1 << BITS_TESTED); // 5*8!
   struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
   for(all_tests = 0; all_tests < 1000; all_tests ++){
-     //printf("%d,%d%%\n", all_tests / 10, all_tests % 10);
     penalty = 0;
     for(three_tests = 0; three_tests < 3; three_tests ++){
-      //printf("3_tests: %d\n", three_tests);
       unsigned long long n_tests;
-      int count[n/5];
-      double V = 0.0;
+      unsigned long count[n/5]; //8! possible values
        for(i = 0; i < n/5; i ++)
 	 count[i] = 0;
        for(n_tests = 0; n_tests < n; n_tests ++){
-	 //printf("n_test: %d/%d\n", n_tests, n);
 	 // Generating the list
-	 int U[1 << BITS_TESTED];
-	 int gen = 0, control = 0;
-	 //printf("Gerar lista...\n");
-	 while(control != (1 << (1 << BITS_TESTED)) - 1){
-	   if(bits < BITS_TESTED){
-	     if(bits > 0){
-	       U[gen] = value % (1 << (bits));
-	       U[gen] = U[gen] << (BITS_TESTED - bits);
-	     }
-	     value = _Wrand(my_rng);
-	     U[gen] = value % (1 << (BITS_TESTED - bits)); 
-	     value = value >> (BITS_TESTED - bits);
-	     bits = 32 - BITS_TESTED + bits;
-	   }
-	   else{
-	     U[gen] = value % (1 << BITS_TESTED); 
-	     value = value >> BITS_TESTED;
-	     bits -= BITS_TESTED;	    
-	   }
-	   //printf("Gerado %d [%d]\n", U[gen], control);
-	   //getchar();
-	   if(!(control & (1 << (U[gen])))){
-	     control = control | (1 << U[gen]);
+	 int U[1 << BITS_TESTED]; // 8 values to be generated
+	 int gen = 0, control = 0; // Control: bit mask with already generated
+	 while(control != 0xff){ // While not all generated
+	   U[gen] = read_random_bits(my_rng, BITS_TESTED); // Generate 1
+	   if(!(control & (1 << (U[gen])))){ // Check if new
+	     control = control | (1 << U[gen]); // Update
 	     gen ++;
-	     //printf("Control: %d\n", control);
 	   }
 	 }
-	 //printf("Seq ok\n");
-	 //printf("Calculando...\n");
-	 // P1: Initialize:
-	 int r, t = (1 << BITS_TESTED); // Size of list
-	 unsigned long long f = 0;
-	 //for(i = 0; i < (1 << BITS_TESTED); i ++)
-	 //  printf("%d ", U[i]);
-	 for(r = t - 1; r > 0; r --){
-	   // P2: Find maximum:
-	   int max = -1, index = 0, i;
-	   for(i = 0; i <= r; i ++){
-	     if(U[i] > max){
-	       max = U[i];
-	       index = i;
-	     }
-	   }
-	   f = f * (r + 1) + index;
-	   // P3: Exchange;
-	   U[index] = U[r];
-	   U[r] = max;
-	 }
-	 // Now f is a number representing the permutation
-	 //printf("%llu\n", f);
-	 count[f] ++;
-	 //printf("f = %llu\n", f);
+	 // Generated all, get the permutation identity
+	 count[permutation_identity(1 << BITS_TESTED, U)] ++;
        } // End of n_tests
        // Chi-square test
-       {
-	 unsigned long long total = 0;
-	 for(i = 0; i < n/5; i ++){
-	   total += count[i] * count[i] * (n/5);
-	   //if(count[i] == 0)
-	   //printf(" count[%d]=%d ", i, count[i]);
-	     //tot ++;
-	     
-	 }
-	 //printf("Sem nada: %llu\n", tot);
-	 //printf("\n");
-	 V = ((double) total) / ((double) n);
-	 V -= n;	 
-       }
-       //printf("\n---\n");
-       printf("V=%f [%f %f | %f %f]\n", V, too_ideal, little_ideal, little_bad,
-	      too_bad);
-       //getchar();
-       if(V < too_bad || V > too_ideal)
-	 penalty += 2;
-       else if(V < little_bad || V > little_ideal)
-	 penalty ++;
+
+       penalty += chi_square(n/5, count, NULL);
        if(penalty >= 2){
 	 fails ++;
 	 break;
        }
-     } // End of three tests
+    } // End of three tests
    } // End of all tests
    quality("Quality of permutation test", (double) (1000 - fails) /
 	  (double) 1000);
    _Wdestroy_rng(free, my_rng);
 }
 
+void test_runs_up(void){
+  const int BITS = 13;
+  int i, n = 1;
+  for(i = 0; i < BITS; i ++)
+    n *= 2;
+  unsigned long bn[6] = {n * 1, n * 5, n * 11, n * 19, n * 29, n * 1};
+  unsigned long bd[6] = {6, 24, 120, 720, 5040, 840};
+  double a[6][6] = {{4529.4, 9044.9, 13568, 18091, 22615, 27892},
+		    {9044.9, 18097, 27139, 36187, 45234, 55789},
+		    {13568, 27139, 40721, 54281, 67852, 83685},
+		    {18091, 36187, 54281, 72414, 90470, 111580},
+		    {22615, 45234, 67852, 90470, 113262, 139476},
+		    {27892, 55789, 83685, 111580, 139476, 172860}};
+  int fails = 0, all_tests, three_tests, penalty, j, c, prev;
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
+  for(all_tests = 0; all_tests < 1000; all_tests ++){
+    penalty = 0;
+    for(three_tests = 0; three_tests < 3; three_tests ++){
+      int generated = 0, values[n], count[6];
+      bool chosen[n]; // Generating permutation of 4096 elements
+      for(i = 0; i < n; i ++) chosen[i] = 0;
+      for(i = 0; i < 6; i ++) count[i] = 0;
+      while(generated < n){
+	values[generated] = read_random_bits(my_rng, BITS);
+	if(chosen[values[generated]] == 0){
+	  chosen[values[generated]] = 1;
+	  generated ++;
+	}
+      }
+      c = -1; // Count values
+      prev = -1;
+      for(i = 0; i < n; i ++){
+	if(values[i] > prev) c++;
+	else{
+	  count[(c < 6)?(c):(5)] ++;
+	  c = 0;
+	}
+	prev = values[i];
+      }
+      count[(c < 6)?(c):(5)] ++;
+      {// COmpute V:
+	double V = 0.0;
+	for(i = 0; i < 6; i ++)
+	  for(j = 0; j < 6; j ++){
+	    long long num = count[i] * count[j] * bd[i] * bd[j] -
+	      count[i] * bn[j] * bd[i] - count[j] * bn[i] * bd[j] + bn[i] * bn[j];
+	    long long den = bd[i] * bd[j];
+	    V += (a[i][j] * (((double) num) / ((double) den)));
+	  }
+	V /= (n-6);
+	if(V < 0.8721 || V > 16.81) penalty += 2;
+	else if(V < 1.635 || V > 12.59) penalty ++;
+	if(penalty > 1){
+	  fails ++;
+	  break;
+	}
+      }
+    }
+  }
+  quality("Quality of runs-up test", (double) (1000 - fails) /
+	  (double) 1000);
+  _Wdestroy_rng(free, my_rng);
+}
+
+void test_maximum_of_t(void){
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
+  int i, j, three_tests, total_tests;
+  int penalty, fails = 0;
+  const int t = 3;
+  const int BITS = 6;
+  const int n = 1310720; // Deve ser 5*2^(BITS * t)
+  const int indices = 64; // Deve ser 2^BITS
+  unsigned long count[indices];
+  double prob[indices];
+  for(i = 0; i < indices; i ++)
+    prob[i] = ((double) (t * (i * i + i) + 1)) / (1 << (BITS * t));
+  for(total_tests = 0; total_tests < 1000; total_tests ++){
+    penalty = 0;
+    for(three_tests = 0; three_tests < 3; three_tests ++){
+      for(i = 0; i < indices; i ++)
+	count[i] = 0;
+      for(i = 0; i < n; i ++){ // Repeating 'n' times: 
+	unsigned long max = 0;
+	for(j = 0; j < t; j ++){ // Maximum of 't':
+	  unsigned long temp = read_random_bits(my_rng, BITS); 
+	  if(temp > max)
+	    max = temp;
+	}
+	count[max] ++;
+      }
+      penalty += chi_square(indices, count, prob);
+      if(penalty >= 2){
+	fails ++;
+	break;
+      }
+    } // End of three tests
+  } // End of total_tests
+  quality("Quality of maximum of t (t=3) test", (double) (1000 - fails) /
+	  (double) 1000);
+  _Wdestroy_rng(free, my_rng);
+}
+
+void test_collision(void){
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
+  int i, three_tests, total_tests;
+  int penalty, fails = 0;
+  const int BITS = 20;
+  const int m = (1 << BITS);
+  const int n = (1 << 14);
+  for(total_tests = 0; total_tests < 1000; total_tests ++){
+    penalty = 0;
+    for(three_tests = 0; three_tests < 3; three_tests ++){
+      int d[m];
+      int collisions = 0;
+      for(i = 0; i < m; i ++)
+	d[i] = 0;
+      for(i = 0; i < n; i ++){
+	int v =  read_random_bits(my_rng, BITS);
+	if(d[v] != 0)
+	  collisions ++;
+	d[v]++;
+      }
+      if(collisions < 101 || collisions > 153)
+	penalty += 2;
+      else if(collisions < 108 || collisions > 145)
+	penalty ++;
+      if(penalty >= 2){
+	fails ++;
+	break;
+      }
+    }// End of three tests
+  }// End of total_tests
+  quality("Quality of collision test", (double) (1000 - fails) /
+	  (double) 1000);
+  _Wdestroy_rng(free, my_rng);
+}
+
+void test_birthday_spacing(void){
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
+  int i, j, three_tests, total_tests, spacing_test;
+  int penalty, fails = 0;
+  const int BITS = 25;
+  const int n = 512;
+  double prob[4] = {0.368801577, 0.369035243, 0.183471182, 0.078691997};
+  for(total_tests = 0; total_tests < 1000; total_tests ++){
+    penalty = 0;
+    for(three_tests = 0; three_tests < 3; three_tests ++){
+      unsigned long birthday[n], spacing[n], equal_spacing[4];
+      for(i = 0; i < 4; i ++)
+	equal_spacing[i] = 0;
+      for(spacing_test = 0; spacing_test < 1000; spacing_test ++){
+	int spac = 0;
+	for(i = 0; i < n; i ++)
+	  birthday[i] = 0;
+	for(i = 0; i < n; i ++)
+	  spacing[i] = 0;
+	for(i = 0; i < n; i ++)
+	  birthday[i] = read_random_bits(my_rng, BITS);
+	// Sorting the birthdays (ugly bubble sort):
+	for(i = 0; i < n; i ++)
+	  for(j = i+1; j < n; j ++)
+	    if(birthday[i] > birthday[j]){
+	      int aux = birthday[i];
+	      birthday[i] = birthday[j];
+	      birthday[j] = aux;
+	    }
+	// Reading their spacings:
+	for(i = 0; i < n; i ++)
+	  if(i < n - 1)
+	    spacing[i] = birthday[i+1] - birthday[i];
+	  else
+	    spacing[i] = birthday[0] - birthday[i];
+	// Sorting the spacing:
+	for(i = 0; i < n; i ++)
+	  for(j = i+1; j < n; j ++)
+	    if(spacing[i] > spacing[j]){
+	      int aux = spacing[i];
+	      spacing[i] = spacing[j];
+	      spacing[j] = aux;
+	    }
+	// Counting the number of equal spacing:
+	for(i = 1; i < n; i ++)
+	  if(spacing[i] == spacing[i-1])
+	    spac ++;
+	equal_spacing[(spac >= 3)?(3):(spac)] ++;
+      } // End of spacing test
+      penalty += chi_square(4, equal_spacing, prob);
+      if(penalty >= 2){
+	fails ++;
+	break;
+      }
+    }// End of three tests
+  }// End of total_tests
+  quality("Quality of birthday spacing test", (double) (1000 - fails) /
+	  (double) 1000);
+  _Wdestroy_rng(free, my_rng);
+}
+ 
 int main(int argc, char **argv){
   if(argc <= 1)
     initialize_seed();
@@ -849,10 +900,14 @@ int main(int argc, char **argv){
   // Argument means: should reverse the obtained bits?
   //test_equidistribution();
   //test_serial();
-  test_gap();
+  //test_gap();
   //test_poker();
   //test_collector();
   //test_permutation();
+  //test_runs_up();
+  //test_maximum_of_t();
+  //test_collision();
+  test_birthday_spacing();
   imprime_resultado();
   return 0;
 }

@@ -1024,6 +1024,167 @@ Sucesso\hidewidth&&
 Mais uma vez o algoritmo da biblioteca padrão tem um desempenho
 catastrófico, mas os demais demonstram uma qualidade equivalente.
 
+\subsecao{3.6. Teste da Permutação}
+
+Este teste consiste em gerar números entre 0 e 7, ignorando valores
+repetidos até que os oito valores diferentes apareçam. Em seguida,
+repetimos o teste e vamos contando todas as diferentes permutações
+destes oito valores assim obtida, verificando se a distribuição das
+$8!$ diferentes permutações está de acordo com o esperado.
+
+Para a semente 787985252 escolhida aleatoriamente, o nosso resultado
+foi:
+
+\vbox{%A forma mais gseral de remover espaçamento entre linhas:
+\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
+\def\linha{\noalign{\hrule}}
+\def\hidewidth{\hskip-1000pt plus 1fill}
+\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
+\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
+\hfil#& \vrule#& \hfil#\hfil& \vrule#&
+\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
+&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+Sucesso\hidewidth&&
+\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+&&SFMT&&92\%&&Xorshiro**&&92\%&\cr\linha
+&&PCG&&93\%&&\monoespaco{rand()}&&03\%&\cr\linha
+&&ChaCha20&&92\%&&&&&\cr\linha}}
+
+O algoritno da biblioteca padrão novamente é o único com uma qualidade
+notavelmente ruim.
+
+\subsecao{3.7. Teste de Tamanho de Sequêncas Ascendentes}
+
+Este teste, como o anterior, consiste em gerar permutações de
+elementos. Mas ao invés de fazer uma contagem de todas as permutações,
+ele avalia elas por meio da quantidade de elementos ascendentes, onde
+o elemento gerado é maior que o anterior.
+
+Para este teste escolhemos gerar permutações de números entre 0 e
+8192. E fizemos uma análise estatística da quantidade de sequências
+ascendentes de 1, 2, 3, 4, 5 ou maiores ou iguais a 6 elementos.
+
+O teste foi feito com a semente escolhida aleatoriamente 3022766729 e
+o resultado foi:
+
+\vbox{%A forma mais gseral de remover espaçamento entre linhas:
+\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
+\def\linha{\noalign{\hrule}}
+\def\hidewidth{\hskip-1000pt plus 1fill}
+\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
+\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
+\hfil#& \vrule#& \hfil#\hfil& \vrule#&
+\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
+&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+Sucesso\hidewidth&&
+\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+&&SFMT&&92\%&&Xorshiro**&&89\%&\cr\linha
+&&PCG&&90\%&&\monoespaco{rand()}&&91\%&\cr\linha
+&&ChaCha20&&92\%&&&&&\cr\linha}}
+
+Apesar desta semente ter deixado o valor do Xorshiro baixo, os demais
+geradores também tem seus valores ocasionalmente baixando para 89\% em
+outras sementes. As causas ainda estão para ser investigadas, mas como
+isso afeta todos os algoritmos, é possível que a causa seja alguma
+perda de precisão na implementação do teste.
+
+\subsecao{3.8. Teste do Maior de $t$}
+
+Este teste consiste em gerar $t$ sequências de números entre 0 e algum
+valor (no nosso caso foi $2^6-1$) e armazenar o maior dos valores. No
+nosso caso foi escolhido $t=3$. Em seguida, compara-se a distribuição
+dos maiores valores com o que é estatisticamente esperado.
+
+O resultado obtido com a semente escolhida aleatoriamente 3802694961
+foi:
+
+\vbox{%A forma mais gseral de remover espaçamento entre linhas:
+\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
+\def\linha{\noalign{\hrule}}
+\def\hidewidth{\hskip-1000pt plus 1fill}
+\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
+\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
+\hfil#& \vrule#& \hfil#\hfil& \vrule#&
+\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
+&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+Sucesso\hidewidth&&
+\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+&&SFMT&&91\%&&Xorshiro**&&93\%&\cr\linha
+&&PCG&&91\%&&\monoespaco{rand()}&&00\%&\cr\linha
+&&ChaCha20&&92\%&&&&&\cr\linha}}
+
+Todos os algoritmos exceto o \texttt{rand} da biblioteca padrão C
+apresentam uma qualidade boa no teste.
+
+\subsecao{3.9. Teste de Colisões}
+
+Este teste, ao contrário dos demais, não usa o teste do
+Chi-Quadrado. Isso porque ele tenta medir de maneira aproximada a
+ocorrência de eventos que tem uma probabilidade muito baixa para o
+Chi-Quadrado. Se a saída do nosso gerador de números aleatórios fôsse
+a saída de uma função hash, com que probabilidade ocorreria uma
+colisão?
+
+Este teste assume uma saída de 20 bits para o nosso gerador e gera um
+total de $2^{14}$ saídas diferentes. Em seguida, o número de colisões
+que ocorreram é testada para ver se ficou muito acima ou muito abaixo
+do esperado. Tal teste é repetido um total de cerca de 3000 vezes,
+onde o número de colisões esperada é ajustada para que a saída deste
+teste tenha uma porcentagem de sucesso esperada semelhante aos testes
+anteriores com o Chi-Quadrado (que é próximo de 92\%).
+
+O resultado do teste para a semente 1300497058 foi:
+
+\vbox{%A forma mais gseral de remover espaçamento entre linhas:
+\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
+\def\linha{\noalign{\hrule}}
+\def\hidewidth{\hskip-1000pt plus 1fill}
+\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
+\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
+\hfil#& \vrule#& \hfil#\hfil& \vrule#&
+\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
+&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+Sucesso\hidewidth&&
+\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+&&SFMT&&94\%&&Xorshiro**&&92\%&\cr\linha
+&&PCG&&94\%&&\monoespaco{rand()}&&57\%&\cr\linha
+&&ChaCha20&&91\%&&&&&\cr\linha}}
+
+Novamente a menor qualidade do gerador da biblioteca padrão é
+aparente.
+
+\subsecao{3.10. Teste de Espaçamento de Aniversário}
+
+Neste teste nós geramos um número $n=512$ de valores de 25 bits. Em
+seguida, os ordenamos e medimos a diferença entre valores
+sucessivos. E contamos o número de distâncias iguais que
+encontramos. Este teste foi sugerido por George Marsaglia e quando
+proposto encontrou falhas em geradores que passavam nos testes
+estatísticos existentes na época.
+
+Nós fazemos o teste acima um total de mil vezes e comparamos o a
+distribuição de espaçaments repetidos com o que seria
+esperado. Aplicamos então o teste do Chi-Quadrado e por fim repetimos
+tudo isso cerca de 3000 vezes para obter a porcentagem de sucesso.
+
+Nosso resultado para a semente gerada aleatoriamente 816475836 foi:
+
+\vbox{%A forma mais gseral de remover espaçamento entre linhas:
+\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
+\def\linha{\noalign{\hrule}}
+\def\hidewidth{\hskip-1000pt plus 1fill}
+\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
+\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
+\hfil#& \vrule#& \hfil#\hfil& \vrule#&
+\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
+&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+Sucesso\hidewidth&&
+\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+&&SFMT&&92\%&&Xorshiro**&&92\%&\cr\linha
+&&PCG&&92\%&&\monoespaco{rand()}&86\%&\cr\linha
+&&ChaCha20&&91\%&&&&&\cr\linha}}
+
+
 \secao{4. Medida de Desempenho}
 
 Após medir o desempenho dos algoritmos implementados, o seguinte
