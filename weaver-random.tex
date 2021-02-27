@@ -46,15 +46,22 @@
 \email{thiago@@bitbitbit.com.br}
 \vskip6pt
 
-\abstract{This article is an informal survey and analysis of random
-number generators in games. It also contains a random number generator
-described using literary programming, which is part of Weaver Game Engine.}
+\abstract{This article is an informal analysis of some random
+number generators. It contains implementation of several random number
+generator algorithms and is intended to be used with Weaver game
+engine, but can also be used standalone in other projects. All
+different algorithms are encapsulated in the same API, therefore using
+the API you can change easily the algorithm using macro definitions.}
 
 \vskip 0.5cm plus 3pt minus 3pt
 
-\resumo{Este artigo é uma pesquisa informal sobre geradores de números
-aleatórios em jogos. Ela também contém um gerador de números aleatórios
-decrito usando programação literária, o qual faz parte do motor de jogos Weaver.}
+\resumo{Este artigo é uma análise informal sobre geradores de números
+aleatórios. Ele contém a implementação de vários algoritmos diferentes
+de geração de números pseudo-randômicos e é feito para ser usado com o
+motor de jogos Weaver, mas também pode ser usado sozinho junto com
+outros projetos. Todos os diferentes algoritmos são encapsulados na
+mesma API, então usando esta API, é possível mudar facilmente o
+algoritmo usando definição de macros.}
 
 \secao{1. Introdução}
 
@@ -116,13 +123,13 @@ quando isso ocorre em aplicações criptográficas, por exemplo. Muitos
 jogos antigos usavam geradores que consistiam apenas em uma sequência
 de números fixos. E o viés de seus geradores não era necessariamente
 aparente. Por outro lado, há ocasiões nas quais um gerador ruim pode
-ter consequências desagradáveis. Em simuladores que almejam realismo,
-em jogos envolvendo apostas ou competições sérias, ou naqueles em que
-certas ocorrências aleatórias devam ser raras e o desenvolvedor não
-deseja que o gerador seja manipulado para aumentar as chances de um
-jogador. Levando isso em conta, o padrão de um gerador de números
-aleatórios de um jogo deve ser alto e deve-se esperar que ele passe em
-testes estatísticos.
+ter consequências desagradáveis. Por exemplo, em simuladores que
+almejam realismo, em jogos envolvendo apostas ou competições sérias,
+ou naqueles em que certas ocorrências aleatórias devam ser raras e o
+desenvolvedor não deseja que o gerador seja manipulado para aumentar
+as chances de um jogador. Levando isso em conta, o padrão de um
+gerador de números aleatórios de um jogo deve ser alto e deve-se
+esperar que ele passe em testes estatísticos.
 
 \subsecao{1.2. Programação Literária e Notação Usada no Artigo}
 
@@ -154,9 +161,6 @@ extern "C" {
 #include <stdbool.h>
 #if defined(__unix__) || defined(__APPLE__)
 #include <pthread.h>
-#endif
-#if defined(W_RNG_ISO_C) || defined(W_RNG_CRYPTO)
-#include <stdlib.h>
 #endif
 @<Escolhe Algoritmo Padrão do RNG@>
 @<Constantes RNG@>
@@ -194,33 +198,63 @@ arquivo. Isso nos permite colocar a declaração de funções à medida que
 formos explicando elas no código, sem precisar declarar todas de uma
 vez só porque elas pertencem a um mesmo trecho de código.
 
-\subsecao{1.4. Funções a serem Definidas}
+\subsecao{1.4. Funções de API a serem Definidas}
 
 Nosso gerador de números aleatórios deverá fornecer um total de 3
-novas funções. A primeira delas irá criar a estrutura que contém o
-gerador após receber a semente inicial (de 32 bits) e deve receber a
-função que alocará o alocador (ou \monoespaco{NULL} para usar
-o \monoespaco{malloc}):
+novas funções.
+
+A primeira função gera e inicializa um gerador retornando um ponteiro
+para ele. Para inicializá-lo, precisamos de uma função de alocação de
+memória passada como primiero argumento (pode ser o \texttt{malloc} da
+biblioteca padrão ou qualquer outro alocador personalizado). Em
+seguida nossa semente será um valor com um tamanho de um vetor e o
+petor propriamente dito de números de 64 bits que assumimos terem sido
+obtidos de maneira aleatória e uniforme.
+
+Dessa forma, nossa função de inicialização é suficientemente genérica
+para que o usuário possa fornecer um número personalizado de entropia
+ao gerador. Caso ele seja usado em um jogo que simula o embaralhamento
+de 54 cartas, por exemplo, o ideal é que ele passe um número de bits
+aleatório $n$ tal que $2^n$ não seja muito menor que $54!$, por
+exemplo. Por outro lado, em algumas máquinas ou ambientes pode ser
+difícil conseguir uma quantidade muito grande de bits aleatórios para
+inicialização. Então, a API permite que um número menor seja passado.
 
 \iniciocodigo
 @<Declarações de Gerador Aleatório@>=
-struct _Wrng *_Wcreate_rng(void *(*alloc)(size_t), uint32_t seed);
+struct _Wrng *_Wcreate_rng(void *(*alloc)(size_t), size_t size, uint64_t *seed);
 @
 \fimcodigo
 
-A segunda é a que efetivamente é usada para nos dar o próximo número
-aleatório da sequência:
+Alguns algoritmos podem, contudo, ignorar qualquer valor maior que o
+recomendado ou podem não dar qualquer garantia de qualidade se
+receberem uma quantidade menor de bits aleatórios em sua
+inicialização. Justamente por isso, vamos fazer com que a nossa API
+avise a quantidade recomendada para o tamanho do vetor da semente,
+deixando a região abaixo a ser definida em breve:
+
+\iniciocodigo
+@<Declarações de Gerador Aleatório@>=
+@<Avisa Tamanho Ideal da Semente@>
+@
+\fimcodigo
+
+
+A segunda função é a que efetivamente é usada para nos dar o próximo
+número aleatório da sequência, que será um elemento de 64 bits:
 
 \iniciocodigo
 @<Declarações de Gerador Aleatório@>+=
-uint32_t _Wrand(struct _Wrng *);
+uint64_t _Wrand(struct _Wrng *);
 @
 \fimcodigo
 
 A última função será apenas para finalizar o uso de um gerador de
 números aleatórios. Ela recebe também um ponteiro para função que
-desalocará o gerador (ou NULL). Ele não poderá mais ser usado depois
-de finalizado:
+desalocará o gerador (ou NULL). Se receber NULL, o gerador não será
+desalocado (alguns alocadores podem ter seu próprio coletor de lixo
+sem fornecerem função de desalocação). De qualquer forma, ele não
+poderá mais ser usado depois de finalizado:
 
 \iniciocodigo
 @<Declarações de Gerador Aleatório@>+=
@@ -300,10 +334,8 @@ LeaveCriticalSection(&(rng -> mutex));
 @
 \fimcodigo
 
-Como desalocar o gerador de números aleatórios é deixado a cargo do
-usuário, a única coisa que a função de finalizar o uso do gerador de
-números aleatórios precisa fazer é finalizar seu Mutex. Podemos
-definir o código dela inteiro aqui:
+Só com isso podemos definir a função que desaloca nossos geradores,
+que será a mesma independente do algoritmo utilizado:
 
 \iniciocodigo
 @<Definição de \_Wdestroy\_rng@>=
@@ -324,36 +356,123 @@ bool _Wdestroy_rng(void (*free)(void *), struct _Wrng *rng){
 
 \secao{2. Algoritmos Geradores de Números Pseudo-Randômicos}
 
-\subsecao{2.1. SFMT}
+\subsecao{2.1. Gerador Linear Congruente (LGC)}
+
+Um Gerador Linear Congruente (também chamado pela sigla inglesa
+de \italico{Livear Congruent Generator}) é simplesmente um gerador de
+sequências de valores aleatórias $(x_0, x_1, \ldots)$ tal que para
+determinados valores de $a, c, m$ temos que:
+
+$$
+x_{i+1}=ax_i+c \mod m
+$$
+
+A qualidade dos geradores varia enormemente de acordo com os
+parâmetros escolhidos. Como queremos gerar sempre valores de 64 bits
+com nossa API, vamos escolher $m=2^{64}$, o que irá facilitar bastante
+a operação. Não será necessário usar o operador de módulo
+explicitamente.
+
+Com relação ao multiplicador $a$, nós usaremos o valor
+0xfa346cbfd5890825 devido a este valor ser um dos listados entre
+multiplicadores com uma qualidade boa para ser usado com este módulo
+$m$ no artigo [Steele, 2021].
+
+Com relação ao valor de $c$, um requisito para sua qualidade é que ele
+seja ímpar (primo em relação à $m$), mas fora isso não há impacto na
+qualidade se $c$ for algum valor ímpar. J'o valor inicial, também deve
+ser sempre um número ímpar, mas sem outros requisitos.
+
+Sendo assim, podemos usar os primeiros 64 bits da semente para
+inicizlizar $x_0$, apenas forçando o bit menos significativo a ser
+1. Se existir mais um valor de 64 bits na semente, usamos ele como
+nossa constante $c$, apenas ajustando o bit menos significativo para
+um. Do contrário apenas usamos $c=1$.
+
+Isso nos dá os seguintes tamanhso recomendados para nossa semente:
+
+\iniciocodigo
+@<Avisa Tamanho Ideal da Semente@>=
+#ifdef W_RNG_LCG
+#define _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE  1
+#define _W_RNG_MAXIMUM_RECOMMENDED_SEED_SIZE  2
+#endif
+@
+\fimcodigo
+
+A estrutura do nosso gerador é bastante simples, só precisa armazenar
+o último valor gerado e o valor da constante $c$:
+
+\iniciocodigo
+@<Estrutura RNG@>=
+#ifdef W_RNG_LCG
+struct _Wrng{
+  uint64_t last_value, c;
+  @<Declaração de Mutex@>
+};
+#endif
+@
+\fimcodigo
+
+E ela é inicializada com o código:
+
+\iniciocodigo
+@<Definição de \_Wcreate\_rng@>=
+#ifdef W_RNG_LCG
+struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
+                           uint64_t *seed){
+  struct _Wrng *rng = (struct _Wrng *) allocator(sizeof(struct _Wrng));
+  if(rng != NULL){
+    // If have a seed, use it, otherwise pick this constant chosen at random:
+    rng -> last_value = ((size > 0)?(seed[0]):(0x1c3b9d10b1d41adc));
+    rng -> c = ((size > 1)?(seed[1]):(1));
+    rng -> last_value |= (1u);
+    rng -> c |= (1u);
+    @<Inicialização de Mutex@>
+  }
+  return rng;
+}
+#endif
+@
+\fimcodigo
+
+E finalmente, podemos agora definir a função que gera os próximos
+valores pseudo-randômicos:
+
+\iniciocodigo
+@<Definição de \_Wrand@>=
+#ifdef W_RNG_LCG
+uint64_t _Wrand(struct _Wrng *rng){
+  uint64_t ret;
+  @<Mutex:WAIT@>
+  rng -> last_value = 0xfa346cbfd5890825 * rng -> last_value + rng -> c;
+  ret = rng -> last_value;
+  @<Mutex:SIGNAL@>
+  return ret;
+}
+#endif
+@
+\fimcodigo
+
+O período esperado para esse gerador é $2^{64}$, depois dessa
+quantidade os valores começam a se repetir.
+
+
+\subsecao{2.2. SFMT}
 
 O SFMT é o ``SIMD-Oriented Fast Mersenne Twister'', proposto pela
 primeira vez em [Saito, 2006]. Ele tem esse nome porque o período
 deste gerador é projetado para ter valores bastante grandes, que são
 primos de Mersenne ($2^n-1$ para algum $n$ inteiro positivo). As
 implementações mais usadas deste algoritmo suportam períodos de
-$2^{19937}-1$ sem que haja repetição. O que é um exagero para qualquer
-caso de uso, inclusive o uso em jogos eletrônicos. Já o ``SIMD'' é um
-conjunto de instruções para valores de 128 bits que CPUs mais recentes
-suportam. Tais instruções, se suportadas, são usadas para tornar o
-desempenho mais rápido.
+$2^{19937}-1$ sem que haja repetição. O que geralmente é mais que
+suficiente (ou mesmo um exagero) para qualquer caso de uso. Já o
+``SIMD'' é um conjunto de instruções para valores de 128 bits que CPUs
+mais recentes suportam. Tais instruções, se suportadas, são usadas
+para tornar o desempenho mais rápido.
 
-Como geradores de números randômicos são na prática tão rápidos, algo
-que impacta muito na velocidade de sua geração é a necessidade de
-invocar funções. Há duas formas de mitigar isso: gerar uma grande
-quantidade de números em um buffer, que deve ser preenchido novamente
-quando eles acabarem, ou pedir para o compilador tornar a
-função \italico{inline\/}. Aqui não usaremos nenhuma das duas
-otimizações. A primeira delas torna o tempo médio de execução muito
-menor, mas aumenta o desvio padrão do tempo de execução, algo que
-queremos evitar em programas interativos. A segunda não será usada por
-não fazer diferença: a API que planejamos para o uso destas funções
-deverá passar ponteiros para a função geradora de números aleatórios,
-e ela tipicamente será executada por meio de tais ponteiros. Portanto,
-o código tipicamente são seria expandido durante a compilação e uma
-função seria invocada de qualquer forma.
-
-O SFMT funciona por meio da seguinte recursão onde cada valor $X_i$ tem
-$w$ bits:
+O SFMT funciona por meio da seguinte recursão onde cada valor $X_i$
+tem $w$ bits (no nosso caso $w=128$):
 
 $$
 X_{i+n}=g(X_i, \ldots, X_{i+n-1})
@@ -381,20 +500,22 @@ para nossas constantes será:
 \fimcodigo
 
 Cada vez que geramos um novo número, temos que fazer a atualização
-$w_0 \leftarrow w_1$, $w_1 \leftarrow w_2$ e assim por diante. Mas
-podemos evitar ter que fazer tantas atribuições ou cópia mantendo
-apenas uma variável com o índice de qual deverá ser o próximo elemento
-a ser retornado pelo nosso gerador. por meio dele saberemos qual a
-posição do próximo elemento de $(w_0, \ldots, w_{156})$ a ser
-esquecido e substituído por um novo. Sendo assim, o formato de nossa
-estrutura de RNG será:
+$w_0 \leftarrow w_1$, $w_1 \leftarrow w_2$ e assim por diante (já que
+o gerador usa uma recursão sobre os $n=156$ valores anteriores). Mas
+podemos evitar ter que fazer tantas atribuições ou cópias mantendo
+apenas uma variável (\texttt{offset}) com o índice de qual deverá ser
+o próximo elemento a ser retornado pelo nosso gerador. por meio dele
+saberemos qual a posição do próximo elemento de $(w_0, \ldots,
+w_{156})$ a ser esquecido e substituído por um novo. Sendo assim, o
+formato de nossa estrutura de RNG será:
 
 \iniciocodigo
 @<Estrutura RNG@>=
 #ifdef W_RNG_MERSENNE_TWISTER
 struct _Wrng{
   char w[_W * _N / 8]; // Todos N valores gerados, cada um com _W bits
-  int offset;         // Index for the next 32-bit value to be returned
+  int offset;          // Index for the next 64-bit value to be returned
+                       // If even, we need to generate next 128 bits
   @<Declaração de Mutex@>
 };
 #endif
@@ -412,7 +533,7 @@ por uma matriz em $F_2$) por meio da seguintes operações:
 #ifdef __SIZEOF_INT128__
 unsigned __int128 result, tmp;
 uint32_t aux[4];
-int i, index = rng -> offset / 4;
+int i, index = rng -> offset / 2;
 result = ((unsigned __int128 *) (rng -> w))[index];
 result = result << 8;
 result = result ^ ((unsigned __int128 *) (rng -> w))[index];
@@ -447,21 +568,25 @@ result = result ^ tmp;
 @
 \fimcodigo
 
-Essa geração de um próximo valor pseudo-randômico $w_i$ à partir de
-$w_{i-1}$, $w_{i-2}$, $w_{i-N}$ e $w_{i-34}$ precisa ser então
-integrada à função que efetivamente retorna o próximo número:
+O código acima é o que representa a multiplicação de matriz por vetor
+que gera o próximo elemento. Essa geração do próximo valor
+pseudo-randômico $w_i$ à partir de $w_{i-1}$, $w_{i-2}$, $w_{i-N}$ e
+$w_{i-34}$ precisa ser então integrada à função que efetivamente
+retorna o próximo número. Como nós só retornamos valores de 64 bits,
+cada novo valor de 128 bits rende dois próximos valores a serem
+retornados:
 
 \iniciocodigo
 @<Definição de \_Wrand@>=
 #ifdef W_RNG_MERSENNE_TWISTER
-uint32_t _Wrand(struct _Wrng *rng){
-  uint32_t ret;
+uint64_t _Wrand(struct _Wrng *rng){
+  uint64_t ret;
   @<Mutex:WAIT@>
-  if(rng -> offset % 4 == 0){
+  if(rng -> offset % 2 == 0){
     @<SFMT: Computa próximo elemento@>
   }
-  ret = ((uint32_t *) (rng -> w))[rng -> offset];
-  rng -> offset = (rng -> offset + 1) % (_W * _N / 32);
+  ret = ((uint64_t *) (rng -> w))[rng -> offset];
+  rng -> offset = (rng -> offset + 1) % (_W * _N / 64);
   @<Mutex:SIGNAL@>
   return ret;
 }
@@ -469,21 +594,79 @@ uint32_t _Wrand(struct _Wrng *rng){
 @
 \fimcodigo
 
-Inicializar o nosso gerador é então uma questão de alocar espaço e
-usar o seguinte método obtido da implementação de referência sobre
-como inicializar o estado do gerador à partir da semente de 32 bits:
+Inicializar o nosso gerador é então ler o que existir na nossa semente
+e preencher valores iniciais do vetor de estado aplicando um
+mini-gerador pseudo-randômico sobre a semente. O método que usaremos é
+o mesmo utilizado na implementação de referência do SFMT. Os primeiro
+componente deste mini-gerador são as seguintes funções:
 
 \iniciocodigo
 @<Definição de \_Wcreate\_rng@>=
 #ifdef W_RNG_MERSENNE_TWISTER
-struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), uint32_t seed){
-  int i;
+static uint32_t f1(uint32_t x){
+  return (x ^ (x >> 27)) * (uint32_t) 1664525UL;
+}
+static uint32_t f2(uint32_t x){
+  return (x ^ (x >> 27)) * (uint32_t) 1566083941UL;
+}
+
+#endif
+@
+\fimcodigo
+
+A função é aplicada então na nossa inicialização abaixo. Usamos os
+mesmos algoritmos utilizados para inicializar o algoritmo em sua
+implementação de referência quando a semente é um vetor. Como a
+especificação lida com vetores de 32 bits e aplica os algoritmos os
+tratando assim, dentro da função de inicialização tratamos tais
+elementos como tendo 32 bits, traduzindo assim o tamanho dos vetores
+conforme apropriado:
+
+\iniciocodigo
+@<Definição de \_Wcreate\_rng@>=
+#ifdef W_RNG_MERSENNE_TWISTER
+struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
+                           uint64_t *seed){
   struct _Wrng *rng = (struct _Wrng *) allocator(sizeof(struct _Wrng));
   if(rng != NULL){
-    uint32_t *p = (uint32_t *) (rng -> w);
-    p[0] = seed;
-    for(i = 1; i < _N * 4; i ++){
-      p[i] = 1812433253UL * (p[i - 1] ^ (p[i - 1] >> 30)) + i;
+    uint32_t *dst = (uint32_t *) (rng -> w), *origin = (uint32_t *) seed;
+    size_t size_dst = _W * _N / 32, size_origin = size * 2;
+    int count, r, i, j, mid = 306, lag = 11;
+    // Preenchemos inicialmente tudo com 0x8b:
+    memset(rng -> w, 0x8b, _W * _N / 8);
+    count = ((size_origin + 1 >= size_dst)?(size_origin + 1):(size_dst));
+    r = f1(dst[0] ^ dst[mid] ^ dst[size_dst - 1]);
+    dst[mid] += r;
+    r += size * 2;
+    dst[mid + 11] += r;
+    dst[0] = r;
+    count --;
+    for(i = 1, j = 0; j < count && j  < size_origin; j ++){
+      r = f1(dst[i] ^  dst[(i + mid) % size_dst] ^
+             dst[(size_dst - 1 + i) % size_dst]);
+      dst[(i + mid) % size_dst] += r;
+      r += origin[j] + i;
+      dst[(i + mid + 11) % size_dst] += r;
+      dst[i] = r;
+      i = (i + 1) % size_dst;
+    }
+    for(; j < count; j++){
+      r = f1(dst[i] ^ dst[(i + mid) % size_dst] ^
+             dst[(i + size_dst - 1) % size_dst]);
+      dst[(i + mid) % size_dst] += r;
+      r += i;
+      dst[(i + mid + 11) % size_dst] += r;
+      dst[i] = r;
+      i = (i + 1) % size_dst;
+    }
+    for (j = 0; j < size_dst; j++) {
+      r = f2(dst[i] + dst[(i + mid) % size_dst] +
+             dst[(i + size_dst - 1) % size_dst]);
+      dst[(i + mid) % size_dst] ^= r;
+      r -= i;
+      dst[(i + mid + lag) % size_dst] ^= r;
+      dst[i] = r;
+      i = (i + 1) % size_dst;
     }
     rng -> offset = 0;
     @<SFMT: Garante Período@>
@@ -506,18 +689,35 @@ valores gerados:
 @<SFMT: Garante Período@>=
 {
   // Máscara de bits a serem checados:
-  uint32_t parity = (p[0] & 0x00000001U) ^ (p[3] & 0xc98e126aU);
+  uint32_t parity = (dst[0] & 0x00000001U) ^ (dst[3] & 0xc98e126aU);
   // Checagem de paridade:
   for (i = 16; i > 0; i >>= 1)
     parity ^= parity >> i;
   parity = parity & 1;
   if(parity != 1)
-    p[0] = p[0] ^ 1;
+    dst[0] = dst[0] ^ 1;
 }
 @
 \fimcodigo
 
-\subsecao{2.2. Xorshiro256**}
+Por fi, temos que indicar qual o tamanho recomendado para a semente do
+SFMT. O algoritmo não espcifica um limite muito rigoroso, mas sabemos
+qu informar um número maior de bits de semente que o vetor de estado é
+inútil. Desta forma, o valor mínimo pedido será 1 elemento e o máximo
+será o número de elementos que preenche o vetor. Para os parâmetros
+que usamos, o vetor tem 19968 bits, o que daria 312 elementos de 64
+bits para preenchê-lo:
+
+\iniciocodigo
+@<Avisa Tamanho Ideal da Semente@>=
+#ifdef W_RNG_MERSENNE_TWISTER
+#define _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE  1
+#define _W_RNG_MAXIMUM_RECOMMENDED_SEED_SIZE  312
+#endif
+@
+\fimcodigo
+
+\subsecao{2.3. Xorshiro256**}
 
 Este é um gerador mais recente que o SFMT e tem como objetivo manter a
 mesma qualidade, fazê-lo passar em testes estatísticos adicionais, ser
@@ -533,7 +733,7 @@ e realizar sobre eles a seguinte operação para gerar o próximo valor:
 @<Xorshiro: Computa próximo elemento@>=
 {
   uint64_t tmp = rng -> w[1] * 5;
-  rng -> result = ((tmp << 7) | (tmp >> 57)) * 9;
+  ret = ((tmp << 7) | (tmp >> 57)) * 9;
 } 
 @
 \fimcodigo
@@ -544,22 +744,18 @@ cada elemento. Isso é feito como na definição de função abaixo:
 \iniciocodigo
 @<Definição de \_Wrand@>=
 #ifdef W_RNG_XORSHIRO
-uint32_t _Wrand(struct _Wrng *rng){
-  uint32_t ret;
+uint64_t _Wrand(struct _Wrng *rng){
+  uint64_t ret;
   @<Mutex:WAIT@>
-  if(rng -> offset % 2 == 0){
-    uint64_t t = rng -> w[1] << 17;
-    @<Xorshiro: Computa próximo elemento@>
-    // Atualiza estado:
-    rng -> w[2] ^= rng -> w[0];
-    rng -> w[3] ^= rng -> w[1];
-    rng -> w[1] ^= rng -> w[2];
-    rng -> w[0] ^= rng -> w[3];
-    rng -> w[2] ^= t;
-    rng -> w[3] = ((rng -> w[3] << 45) | (rng -> w[3] >> 19));
-  }
-  ret = (uint32_t) ((rng -> result) >> (32 * rng -> offset));
-  rng -> offset = (rng -> offset + 1) % 2;
+  uint64_t t = rng -> w[1] << 17;
+  @<Xorshiro: Computa próximo elemento@>
+  // Atualiza estado:
+  rng -> w[2] ^= rng -> w[0];
+  rng -> w[3] ^= rng -> w[1];
+  rng -> w[1] ^= rng -> w[2];
+  rng -> w[0] ^= rng -> w[3];
+  rng -> w[2] ^= t;
+  rng -> w[3] = ((rng -> w[3] << 45) | (rng -> w[3] >> 19));
   @<Mutex:SIGNAL@>
   return ret;
 }
@@ -576,30 +772,42 @@ podemos aproveitar um mesmo valor gerado para retornar duas vezes:
 @<Estrutura RNG@>=
 #ifdef W_RNG_XORSHIRO
 struct _Wrng{
-  uint64_t w[4];        // Valores de estado
-  uint64_t result; // Last returned value
-  int offset;      // If we have pending bits in result 
+  uint64_t w[4];   // Valores de estado
   @<Declaração de Mutex@>
 };
 #endif
 @
 \fimcodigo
 
-Por fim, a inicialização do gerador Xorshiro** será:
+Por fim, a inicialização do gerador Xorshiro** consistirá em copiar
+para seu estado inicial a semente e caso ela não tenha um tamanho
+grande o bastante, nós a aumentamos usando o gerador ``splitmix64''
+como sugerido pela implementação de referência:
 
 \iniciocodigo
 @<Definição de \_Wcreate\_rng@>=
 #ifdef W_RNG_XORSHIRO
-struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), uint32_t seed){
+struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
+                           uint64_t *seed){
   int i;
   struct _Wrng *rng = (struct _Wrng *) allocator(sizeof(struct _Wrng));
   if(rng != NULL){
-    uint32_t *p = (uint32_t *) (rng -> w);
-    p[0] = seed;
-    for(i = 1; i < 8; i ++)
-      p[i] = 1812433253UL * (p[i - 1] ^ (p[i - 1] >> 30)) + i;
-    rng -> offset = 0;
-    rng -> result = 0;
+    for(i = 0; i < 4; i ++){
+      if(i < size)
+        rng -> w[i] = seed[i];
+      else{
+        if(i == 0)
+          rng -> w[i] = 0;
+        else{
+          uint64_t z;
+          rng -> w[i - 1] += 0x9e3779b97f4a7c15; 
+          z = rng -> w[i - 1];
+          z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9;
+          z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
+          rng -> w[i] = z ^ (z >> 31);
+        }
+      }
+    }
     @<Inicialização de Mutex@>
   }
   return rng;
@@ -608,125 +816,139 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), uint32_t seed){
 @
 \fimcodigo
 
-\subsecao{2.3. PCG (\italico{Permuted Congruential Generator})}
+Devido a isso, vamos indicar como um valor entre 1 e 4 o tamanho
+recomendado para a semente deste gerador:
+
+\iniciocodigo
+@<Avisa Tamanho Ideal da Semente@>=
+#ifdef W_RNG_XORSHIRO
+#define _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE  1
+#define _W_RNG_MAXIMUM_RECOMMENDED_SEED_SIZE  4
+#endif
+@
+\fimcodigo
+
+
+\subsecao{2.4. PCG (\italico{Permuted Congruential Generator})}
 
 O terceiro gerador que será fornecido como opção é o PCG. Este gerador
-usa ainda menos bits de estado que o Xorshiro:
+usa ainda menos bits de estado que o Xorshiro, mas assim como o
+Mersenne Twister usa variáveis de 128 bits:
 
 \iniciocodigo
 @<Estrutura RNG@>=
 #ifdef W_RNG_PCG
+#ifdef __SIZEOF_INT128__
 struct _Wrng{
-  uint64_t state;
-  uint64_t increment; // Sempre deve ser ímpar
+  unsigned __int128 state;
+  unsigned __int128 increment; // Sempre deve ser ímpar
   @<Declaração de Mutex@>
 };
-#endif
-@
-\fimcodigo
-
-Usamos para ele a mesma inicialização que para os outros geradores
-dada uma semente de 32 bits. Mas temos que garantir que o valor de
-incremento que usaremos será sempre ímpar:
-
-\iniciocodigo
-@<Definição de \_Wcreate\_rng@>=
-#ifdef W_RNG_PCG
-struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), uint32_t seed){
-  struct _Wrng *rng = (struct _Wrng *) allocator(sizeof(struct _Wrng));
-  if(rng != NULL){
-    uint32_t *p = (uint32_t *) &(rng -> state);
-    uint32_t *pinc = (uint32_t *) &(rng -> increment);
-    p[0] = seed;
-    p[1] = 1812433253UL * (p[0] ^ (p[0] >> 30)) + 1;
-    pinc[0] = 1812433253UL * (p[1] ^ (p[1] >> 30)) + 2;
-    pinc[1] = 1812433253UL * (pinc[0] ^ (pinc[0] >> 30)) + 3;
-    rng -> increment = (rng -> increment | 1);
-    @<Inicialização de Mutex@>
-  }
-  return rng;
-}
-#endif
-@
-\fimcodigo
-
-E por fim, geramos um novo número aleatório por meio do seguinte código:
-
-\iniciocodigo
-@<Definição de \_Wrand@>=
-#ifdef W_RNG_PCG
-uint32_t _Wrand(struct _Wrng *rng){
-  uint32_t ret, xorshifted, rot;
-  @<Mutex:WAIT@>
-  uint64_t oldstate = rng -> state;
-  // Advance internal state
-  rng -> state = oldstate * 6364136223846793005ULL + rng -> increment;
-  xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
-  rot = oldstate >> 59u;
-  ret = (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
-  @<Mutex:SIGNAL@>
-  return ret;
-}
-#endif
-@
-\fimcodigo
-
-\subsecao{2.4. Gerador de Números Aleatórios do ISO C}
-
-Ao invés do Mersenne Twister, Xorshiro e PCG, também há um suporte
-para usar o próprio gerador de números aleatórios da biblioteca
-padrão. Este recurso é oferecido para auxiliar em testes e
-comparações, mas não é recomendado para uso em projetos. Um dos
-motivos é o fato de ser um gerador reconhecidamente com menos
-qualidade e pior dresempenho. Além disso, ele não irá necessariamente
-funcionar de maneira correta quando usado por meio de threads.
-
-Uma dificuldade inicial é que o gerador padrão não costuma retornar um
-inteiro de 32 bits. Em alguns casos, o valor retornado pode ter apenas
-15 bits (o maior número costuma ser o maior número do
-tipo \monoespaco{int}). Na biblioteca C GNU, o número tem 31
-bits. Sendo assim, para preencher bits restantes temos que invocar
-mais de uma vez a função para obter mais bits. E vamos precisar de um
-valor na nossa estrutura de gerador para armazenar quaisquer bits que
-sobrarem para serem reaproveitados:
-
-\iniciocodigo
-@<Estrutura RNG@>=
-#ifdef W_RNG_ISO_C
-struct _Wrng{
-  int accumulator;     // Some bits accumulated
-  int remaining_bits;  // How many bits we have above
-  int bits;            // How many bits rand() returns
-  @<Declaração de Mutex@>
-};
-#endif
-@
-\fimcodigo
-
-Ao criar este RNG, apenas armazenamos quantos bits a nossa função
-padrão gera e inicializamos a estrutura como tendo 0 bits
-acumulados. Além disso também inicializamos a função usando a semente
-recebida:
-
-\iniciocodigo
-@<Definição de \_Wcreate\_rng@>=
-#ifdef W_RNG_ISO_C
-struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), uint32_t seed){
-  struct _Wrng *rng = (struct _Wrng *) allocator(sizeof(struct _Wrng));
-  if(rng != NULL){
-    unsigned int max = ((unsigned int) RAND_MAX) + 1;
-    rng -> accumulator = 0;
-    rng -> remaining_bits = 0;
-    rng -> bits = 0;
-    while(max > 1){
-      rng -> bits ++;
-      max /= 2;
-    }
-#ifdef __OpenBSD__
-    srand_deterministic((unsigned int) seed);
 #else
-    srand((unsigned int) seed);
+#error "PCG unsupported without 128 bit integer support."
 #endif
+#endif
+@
+\fimcodigo
+
+O ideal é que ele seja inicializado com uma semente entre 128 e 256
+bits, o que equivale para nós a um vetor com entre 2 e 4 números de 64
+bits. Os primeiros 128 bits são a semente em si. O segundo valor serve
+como uma variação, um deslocamento sobre a sequência gerada pela
+semente.
+
+Se um número maior de bits for passado como semente, os bits
+adicionais serão ignorados. Se um número menor for passado, usamos o
+que temos sequencialmente. Para preencher os valores faltantes: os
+primeiros 64 bits são preenchidos por uma constante, usamos a versão
+de 32 bits do PCG com a semente inicial para preencher os próximos 64
+bits (tendo que gerar dois valores de 32 bits) e os bits restantes
+também serão preenchidos por uma constante.
+
+Sendo assim, vamos primeiro definir como eum estado (de 64 bits) é
+inicializado à partir de uma semente de 64 bits:
+
+\iniciocodigo
+@<Definição de \_Wcreate\_rng@>=
+#ifdef W_RNG_PCG
+// Initializes 'state' with 'seed' using PCG 32 (that requires 64-bit seeds):
+// The constants are derived from 0xd6b9e1860000218e chosen as a stream value
+static void pcg_init32(uint64_t seed, uint64_t *state){
+  const uint64_t initseq = 0xd6b9e1860000218e;
+  uint64_t inc = (initseq << 1) | 1;
+  *state = 0;
+  *state = *state * 6364136223846793005ull + inc;
+  *state += seed;
+  *state = *state * 6364136223846793005ull + inc;
+}
+#endif
+@
+\fimcodigo
+
+Depois de inicializar o gerador PCG de 32 bits, pode-se gerar novos
+valores com ele usando a função abaixo:
+
+\iniciocodigo
+@<Definição de \_Wrand@>=
+#ifdef W_RNG_PCG
+static uint64_t pcg_rand32(uint64_t *state){
+  const uint64_t initseq = 0xd6b9e1860000218e;
+  uint64_t inc = (initseq << 1) | 1;
+  uint64_t oldstate = *state, value, rot;
+  *state = *state * 6364136223846793005ull + inc;
+  value = ((oldstate >> 18u) ^ oldstate) >> 27u;
+  rot = oldstate >> 59u;
+  return (value >> rot) | (value << ((- rot) & 31));
+}
+#endif
+@
+\fimcodigo
+
+Tudo isso é para que possamos inicializar de alguma forma nossa
+semente se recebermos uma semente com menos de 128 bits no verdadeiro
+inicializador do PCG de 64 bits:
+
+\iniciocodigo
+@<Definição de \_Wcreate\_rng@>=
+#ifdef W_RNG_PCG
+struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
+                           uint64_t *seed){
+  struct _Wrng *rng = (struct _Wrng *) allocator(sizeof(struct _Wrng));
+  unsigned __int128 initstate, initseq, multiplier;
+  if(rng != NULL){
+    if(size > 0)
+      initstate = seed[0];
+    else // If not specified, use this value chosen randomly
+      initstate = 0xf1168ab461218bb5;
+    initstate = initstate << 64;
+    if(size > 1)
+      initstate += seed[1];
+    else{ // If not specified, fill with values from PCG of 32 bits
+      uint64_t state, value;
+      pcg_init32(seed[0], &state);
+      value = pcg_rand32(&state);
+      value = value << 32;
+      value += pcg_rand32(&state);
+      initstate += value;;
+    }
+    if(size > 2)
+      initseq = seed[2];
+    else // If not specified, use this constant chosen randomly:
+      initseq = 0x4ecbb136926970a4;
+    initseq = initseq << 64;
+    if(size > 3)
+      initseq += seed[3];
+    else // If not specified, use this constant chosen randomly:
+      initseq += 0x25b22530f844f87b;
+    // Inicializando o estado inicial:
+    multiplier = 2549297995355413924ULL;
+    multiplier = multiplier << 64;
+    multiplier += 4865540595714422341ULL;
+    rng -> state = 0;
+    rng -> increment = (initseq << 1) | 1;
+    rng->state = rng->state * multiplier + rng->increment;
+    rng -> state += initstate;
+    rng->state = rng->state * multiplier + rng->increment;
     @<Inicialização de Mutex@>
   }
   return rng;
@@ -735,28 +957,38 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), uint32_t seed){
 @
 \fimcodigo
 
-Para retornar um novo número pseudo-randômico, primeiro preenchemos os
-bits menos significativos com os bits que temos acumulados. Em
-seguida, com novos valores retornados pela função \monoespaco{rand},
-nós vamos preenchendo valores mais e mais significativos. Se sobrar
-alguns bits, armazenamos ele no estado de nosso gerador:
+Para evitar inicializar o gerador de maniera não-recomendada,
+precisamos de pelo menos 128 bits. E no máximo 256, já que qualquer
+valor restante é ignorado:
+
+\iniciocodigo
+@<Avisa Tamanho Ideal da Semente@>=
+#ifdef W_RNG_PCG
+#define _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE  2
+#define _W_RNG_MAXIMUM_RECOMMENDED_SEED_SIZE  4
+#endif
+@
+\fimcodigo
+
+
+E por fim, geramos um novos números aleatórios com o PCG de 64 bits
+por meio do seguinte código:
 
 \iniciocodigo
 @<Definição de \_Wrand@>=
-#ifdef W_RNG_ISO_C
-uint32_t _Wrand(struct _Wrng *rng){
-  uint32_t ret;
-  unsigned int filled_bits, new_value;
+#ifdef W_RNG_PCG
+uint64_t _Wrand(struct _Wrng *rng){
+  unsigned __int128 multiplier;
+  uint64_t ret, xorshifted, rot;
+  multiplier = 2549297995355413924ULL;
+  multiplier = multiplier << 64;
+  multiplier += 4865540595714422341ULL;
   @<Mutex:WAIT@>
-  ret = rng -> accumulator;
-  filled_bits = rng -> remaining_bits;
-  while(filled_bits < 32){
-    new_value = rand();
-    ret += (new_value << filled_bits);
-    filled_bits += rng -> bits;
-  }
-  rng -> remaining_bits = filled_bits - 32;
-  rng -> accumulator = (new_value >> (rng -> bits - rng -> remaining_bits));
+  // Advance internal state
+  rng -> state = rng -> state * multiplier + rng -> increment;
+  xorshifted = (((uint64_t)(rng -> state >> 64u)) ^ ((uint64_t) rng -> state));
+  rot = rng -> state >> 122u;
+  ret = (xorshifted >> rot) | (xorshifted << ((-rot) & 63));
   @<Mutex:SIGNAL@>
   return ret;
 }
@@ -764,41 +996,168 @@ uint32_t _Wrand(struct _Wrng *rng){
 @
 \fimcodigo
 
-\subsecao{2.5. Gerador Criptograficamente Seguro}
+\subsecao{2.5. ChaCha20}
 
-O código desta seção será fornecido para ser usado em testes e
-comparações, mas seu uso não é recomendado para uso em outros
-programas. Um dos motivos é o fato dele ignorar a semente que você
-passa. os resultados obtidos com ele não podem ser repetidos passando
-uma mesma semente. Além disso ele tem um desempenho reconhecidamente
-pior que para aplicações não-criptográficas não compensa a
-imprevisibilidade computacional. Por ser uma opção fornecida apenas
-para fins de testes, este gerador é implementado meramente usando a
-função \monoespaco{arc4random} de sistemas BSD.
+O ChaCha20 é um gerador projetado para ser criptograficamente
+seguro. Mas isso só é verdade se ele for alimentado com ua semente com
+um tamanho adequado, e se a semente realmente for obtida de maneira
+aleatória e uniforme, sem ser reaproveitada novamente. A implementação
+aqui feita, contudo, não deve ser usada para fins criptográficos
+sérios. Ela está sendo projetada para ser usada para fins de testes e
+também em projetos onde a segurança do gerador não é crítica. O motivo
+é que há implementações muito mais testadas e examidadas que
+esta. Aqui não estamos nos preocupando com detalhes como ataques de
+canais laterais ou coisas que são importantes para usos sérios da
+criptografia, então pode ser que a implementação aqui feita tenha
+falhas de segurança. A ideia de implementar esta função é apenas
+garantir uma alternativa de gerador para aqueles que querem uma
+qualidade de geração muito maior que o normal, mesmo que tenham que
+pagar caro em performance para isso.
 
-A estrutura do RNG apenas armazena a sua semente (que nem é usada):
+O ChaCha20 tem como primeiro componente de seu funcionamento uma
+função de preenchimento, que receberá como entrada 384 bits (a serem
+interpretados como separados em componentes de 64 bits) e gera como
+saída 512 bits. A ideia é que a saída seja interpretada como uma
+matriz $4\times 4$ de elementos de 32 bits, mesmo que não a
+armazenemos neste formato:
+
+@<ChaCha20: Preenchimento@>=
+#ifdef W_RNG_CHACHA20
+static void chacha_padding(uint64_t input[6], uint32_t output[16]){
+  int i, j;
+  output[0] = ('e' << 24) + ('x' << 16) + ('p' << 8) + 'a';
+  output[1] = ('n' << 24) + ('d' << 16) + (' ' << 8) + '3';
+  output[2] = ('2' << 24) + ('-' << 16) + ('b' << 8) + 'y';
+  output[3] = ('t' << 24) + ('e' << 16) + (' ' << 8) + 'k';
+  for(j=4, i = 0; i < 6; i ++, j += 2){
+    output[j] = (input[i] / 4294967296llu);
+    output[j+1] = input[i] % 4294967296llu;
+  }
+}
+#endif
+@
+
+Na entrada dessa função de preenchimento, os primeiros 4 valores
+sempre são retirados da semente inicial. O próximo é sempre um
+contador que no primeiro bloco gerado é 0, e a cada próximo incrementa
+em 1. E o último é um número que deve ser sempre usado uma só vez.
+
+O próximo componente é a função abaixo que recebe 4 valores de 32bits
+e os modifica realizando uma série de operações:
+
+@<ChaCha20: QuarterRound@>=
+#ifdef W_RNG_CHACHA20
+void quarter_round(uint32_t *a, uint32_t *b, uint32_t *c, uint32_t *d){
+  *a = *a + *b;
+  *d = *d ^ *a;
+  *d = (*d << 16) | (*d >> 16);
+  *c = *c + *d;
+  *b = *b ^ *c;
+  *b = (*b << 12) | (*b >> 20);
+  *a = *a + *b;
+  *d = *d ^ *a;
+  *d = (*d << 8) | (*d >> 24);
+  *c = *c + *d;
+  *b = *b ^ *c;
+  *b = (*b << 7) | (*b >> 25);
+}
+#endif
+@
+
+A operação anterior é utilizada na seguinte função de permutação que
+recebe como entrada 16 elementos de 32 bits e os transforma:
+
+@<ChaCha20: Permutação@>=
+#ifdef W_RNG_CHACHA20
+void chacha_permutation(uint32_t elements[16]){
+  int i;
+  for(i = 0; i < 10; i ++){
+    quarter_round(&elements[0], &elements[4], &elements[8], &elements[12]);
+    quarter_round(&elements[1], &elements[5], &elements[9], &elements[13]);
+    quarter_round(&elements[2], &elements[6], &elements[10], &elements[14]);
+    quarter_round(&elements[3], &elements[7], &elements[11], &elements[15]);
+    quarter_round(&elements[0], &elements[5], &elements[10], &elements[15]);
+    quarter_round(&elements[1], &elements[6], &elements[11], &elements[12]);
+    quarter_round(&elements[2], &elements[7], &elements[8], &elements[13]);
+    quarter_round(&elements[3], &elements[4], &elements[9], &elements[14]);
+  }
+}
+#endif
+@
+
+Com esses pré-requisitos podemos começar a definir a estrutura e
+funções de nossa API. A estrutura do gerador deverá armazenar um vetor
+com 6 elementos de 64 bits (que depois serão passados para a função
+que gera novos números após antes passar pelo preenchimento), um
+espaço de 512 bits com os últimos valores gerados (se existirem) e um
+índice para saber qual o próximo valor que deve ser retornado. A
+estrutura será então:
 
 \iniciocodigo
 @<Estrutura RNG@>=
-#ifdef W_RNG_CRYPTO
+#ifdef W_RNG_CHACHA20
 struct _Wrng{
-  uint32_t seed;
+  uint64_t array[6];
+  uint32_t generated_values[16];
+  int index;
   @<Declaração de Mutex@>
 };
 #endif
 @
 \fimcodigo
 
-Na criação do RNG armazenamos a semente ali apenas para evitarmos
-avisos do compilador quanto a um parâmetro sendo ignorado pela função:
+Quando a estrutura é alocada, os primeiros 4 valores do nosso vetor de
+6 elementos são copiados da semente, os próximo valor é preenchido
+como 0 e o último também é removido da semente, mas se não existir
+pode ser tratado como 0 (ele seria um nounce). Isso significa que o
+ideal é que nossa semente tenha entre 4 e 5 valores:
+
+\iniciocodigo
+@<Avisa Tamanho Ideal da Semente@>=
+#ifdef W_RNG_CHACHA20
+#define _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE  4
+#define _W_RNG_MAXIMUM_RECOMMENDED_SEED_SIZE  5
+#endif
+@
+\fimcodigo
+
+A questão é o que fazr se nossa semente for menor que isso. Faremos a
+mesma coisa que fizemos com o Xorshiro: usamos o algoritmo splitmix64
+para preencher os próximos à partir do valor que temos (e usamos uma
+constante se não existir nenhum). Mas não se deve ter nenhuma
+expenctativa de que a qualidade é mantida com uma semente reduzida
+(não é, e é catastrófico se for usado para fins criptográficos):
 
 \iniciocodigo
 @<Definição de \_Wcreate\_rng@>=
-#ifdef W_RNG_CRYPTO
-struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), uint32_t seed){
+#ifdef W_RNG_CHACHA20
+struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
+                           uint64_t *seed){
+  int i;
   struct _Wrng *rng = (struct _Wrng *) allocator(sizeof(struct _Wrng));
   if(rng != NULL){
-    rng -> seed = seed;
+    for(i = 0; i < 4; i ++){
+      if(i < size)
+        rng -> array[i] = seed[i];
+      else{
+        if(i == 0)
+          rng -> array[i] = 0;
+        else{
+          uint64_t z;
+          rng -> array[i - 1] += 0x9e3779b97f4a7c15; 
+          z = rng -> array[i - 1];
+          z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9;
+          z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
+          rng -> array[i] = z ^ (z >> 31);
+        }
+      }
+    }
+    rng -> array[4] = 0;
+    if(size > 4)
+      rng -> array[5] = seed[4];
+    else
+      rng -> array[5] = 0;
+    rng -> index = 0;
     @<Inicialização de Mutex@>
   }
   return rng;
@@ -807,22 +1166,51 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), uint32_t seed){
 @
 \fimcodigo
 
-O uso do RNG consiste apenas na chamada da
-função \monoespaco{arc4random} do sistema. Em sistemas operacionais
-seguros ele é implementado por meio do gerador ChaCha20, embora ainda
-possam existir sistemas que implementam ele com o algoritmo RC4, que não
-é mais considerado criptograficamente seguro.
+Quando tivermos que gerar um novo valor, geralmente temos valores já
+gerados no vetor de 16 números de 32 bits. Com eles dá para gerarmos 8
+saídas de 64 bits. Procedemos da seguinte forma quando não precisamos
+gerar novos valores:
 
 \iniciocodigo
 @<Definição de \_Wrand@>=
-#ifdef W_RNG_CRYPTO
-uint32_t _Wrand(struct _Wrng *rng){
-  return arc4random();
+#ifdef W_RNG_CHACHA20
+@<ChaCha20: Preenchimento@>
+@<ChaCha20: QuarterRound@>
+@<ChaCha20: Permutação@>
+uint64_t _Wrand(struct _Wrng *rng){
+  uint64_t ret;
+  @<Mutex:WAIT@>
+  if(rng -> index % 16 == 0){
+    rng -> index = 0;
+    @<ChaCha20: Gera Novos Valores@>
+    rng -> array[4] ++;
+  }
+  ret = rng -> generated_values[rng -> index];
+  ret = ret << 32;
+  ret += rng -> generated_values[rng -> index + 1];
+  rng -> index += 2; 
+  @<Mutex:SIGNAL@>
+  return ret;
 }
 #endif
 @
 \fimcodigo
 
+E finalmente a especificação fica completa mostrando como usando o seu
+estado interno o gerador obtém novos valores pseudo-aleatórios:
+
+@<ChaCha20: Gera Novos Valores@>=
+{
+  int i;
+  uint32_t padded_array[16], copied_array[16];
+  chacha_padding(rng -> array, padded_array);
+  for(i = 0; i < 16; i ++)
+    copied_array[i] = padded_array[i];
+  chacha_permutation(padded_array);
+  for(i = 0; i < 16; i ++)
+    rng -> generated_values[i] = padded_array[i] + copied_array[i];
+}
+@
 
 \subsecao{2.6. Estrutura Final do Arquivo}
 
@@ -843,35 +1231,39 @@ O arquivo com o código-fonte de nossas funções terá a seguinte forma:
 \secao{3. Testes de Qualidade}
 
 Como forma de testar a qualidade de todos os algoritmos fornecidos e
-fazer comparações, fazemos alguns testes estatísticos emíricos
+fazer comparações, fazemos alguns testes estatísticos empíricos
 sugeridos em [Knuth, 1998]. Uma ressalva é que muitos dos testes
 sugeridos lá presume o desejo de gerar números aleatórios entre 0 e um
 valor $n$, ou então valores reais entre 0 e 1. Contudo, se assumirmos
 isso acabaremos dando um peso maior para os bits mais significativos
-gerados. Não sabemos como o valor de 32 bits gerado pelas nossas
-funções seria usado. Desta forma, queremos garantir a qualidade dele
-em termos de cada um dos bits gerados. Desta forma, usamos os testes
-sugeridos sempre que relevante, avaliando os valores de nosso gerados
-como uma sequncia de bits e avaliamos como se isso fosse uma sequência
-de zeros e uns gerados aleatoriamente.
+gerados. Mas queremos garantir a qualidade mínima dele para todos os
+bits. Desta forma, buscamos em diferentes testes tratar os valores
+gerados como uma sequência de bits (não de números de 64 bits), e
+escolhemos de maneira arbitrária, mas diferente em cada um dos testes,
+escolher um tamanho em bits diferente para cada valor gerado.
 
-Em todos os testes, aplicamos um teste como o Chi-Quadrado (ou
-Smirnov-Kolmogorov) como sugerido na referência [Knuth,
-1998]. Repetimos as medidas 3 vezes, se uma delas um valor aleatório
-tiver uma chance inferior a 1\% de ser tão distante ou de ser tão
-próximo do esperado, interrompemos os testes e consideramos uma
-falha. Se por duas das três vezes testadas o valor obtido for algo com
-apenas 5\% de chance de ser tão distante ou tão próximo do esperado,
-também consideramos uma falha. Repetimos os três testes mil vezes e
-geramos assim uma porcentagem de sucesso. Como referência, a menos que
-seja dito o contrário, o valor esperado de sucesso é de 92,34\%.
+Em todos os testes, aplicamos um teste como o Chi-Quadrado como
+sugerido na referência [Knuth, 1998]. Repetimos as medidas 3 vezes, se
+uma delas um valor aleatório tiver uma chance inferior a 1\% de ser
+tão distante ou de ser tão próximo do esperado, interrompemos os
+testes e consideramos uma falha. Se por duas das três vezes testadas o
+valor obtido for algo com apenas 5\% de chance de ser tão distante ou
+tão próximo do esperado, também consideramos uma falha. Repetimos os
+três testes mil vezes e geramos assim uma porcentagem de sucesso. Como
+referência, a menos que seja dito o contrário, o valor esperado de
+sucesso é de 92,34\%.
+
+Todos os testes são feitos também para a mesma semente, escolhida de
+maneira elatória e uniforme. No caso, ela é a sequência de 5 valores:
+\monoespaco{0x32147198b5436569}, \monoespaco{0x260287febfeb34e9},
+\monoespaco{0x0b6cc94a91a265e4},
+\monoespaco{0xc6a109c50dd52f1b} e \monoespaco{0x8298497f3992d73a}.
 
 \subsecao{3.1. Teste de Equidistribuição}
 
 Basicamente neste teste geramos uma sequência de dez mil bits
 aleatórios e avaliamos o quão bem distribuído o valor está entre zeros
-e uns. Geramos a semente aleatória 2130833862 e obtivemos a seguinte
-taxa de sucesso para nosos algoritmos:
+e uns. A taxa de sucesso para as implementações apresentadas foi:
 
 \vbox{%A forma mais gseral de remover espaçamento entre linhas:
 \baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
@@ -885,155 +1277,14 @@ taxa de sucesso para nosos algoritmos:
 Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&92\%&&Xorshiro**&&91\%&\cr\linha
-&&PCG&&93\%&&\monoespaco{rand()}&&94\%&\cr\linha
-&&ChaCha20&&93\%/94\%&&&&&\cr\linha}}
-
-
-Todos os algoritmos testados apresentaram desempenho satisfatório
-neste teste mais básico. O valor inesperadamente alto do ChaCha2
-aparenta ser uma flutuação: testando ele repetidas vezes, os valores
-obtidos costumam ser muito mais próximos do esperado. O mesmo não é
-válido para o gerador ISO padrão da linguagem C. Seus resultados estão
-consistentemente idealizados demais neste teste.
+&&PCG&&93\%&&\monoespaco{LCG}&&93\%&\cr\linha
+&&ChaCha20&&91\%&&&&&\cr\linha}}
 
 \subsecao{3.2. Teste Serial}
 
 O teste serial consiste em gerar sequências de $d$ bits e verificar se
 cada combinação possível ocorre com uma proporção semelhante a
-$1/2^d$. No nosso caso escolhemos $d=15$ (propositalmetne um valor
-primo em relação a 32) e usamos a semente 171330726 escolhida
-aleatoriamente. O resultado obtido foi:
-
-\vbox{%A forma mais gseral de remover espaçamento entre linhas:
-\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
-\def\linha{\noalign{\hrule}}
-\def\hidewidth{\hskip-1000pt plus 1fill}
-\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
-\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
-\hfil#& \vrule#& \hfil#\hfil& \vrule#&
-\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
-&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
-Sucesso\hidewidth&&
-\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
-&&SFMT&&93\%&&Xorshiro**&&92\%&\cr\linha
-&&PCG&&90\%&&\monoespaco{rand()}&&00\%&\cr\linha
-&&ChaCha20&&92\%&&&&&\cr\linha}}
-
-O algoritmo de referência do padrão ISO usado pela
-função \monoespaco{rand} falha catastroficamente neste teste. Os
-algoritmos recomendados tiveram desempenho esperado no teste, com a
-flutuação do PCG estando ainda dentro do esperado.
-
-\subsecao{3.3. Teste de lacuna}
-
-Este é o teste baseado no terceiro empírico sugerido em [Knuth,
-1998]. Mas ao invés de fazer a medida de lacuna interpretando os
-números obtidos como entre 0 e 1 como sugerido (o que daria novamente
-um peso alto para os bits mais significativos), nós medimos a lacuna
-de bits: interpretamos os valores retornados pelo gerados como uma
-sequência contínua de bits. E contamos o tamanho das lacunas
-encontradas (sequências de bits 0 terminadas em bits 1).
-
-Por exemplo, na sequência ``100110010100001'' obtemos as lacunas ``1''
-(tamanho 0), ``001'' (tamanho 2), ``1'' (tamanho 0), ``001'' (tamanho
-2), ``01'' (tamanho 1) e ``00001'' (tamanho 4). Em cada gerador
-obtemos uma amostragem de $5\cdot2^{20}$ lacunas e avaliamos a
-quantidade de cada tamanho de lacunas com um teste de
-chi-quadrado. Aplicamos então a mesma avaliação dos outros testes e
-medimos a taxa de sucesso (novamente esperada como sendo próxima de
-92,34\%). O resultado obtido para a semente 3558029206 gerada
-aleatoriamente foi:
-
-\vbox{%A forma mais gseral de remover espaçamento entre linhas:
-\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
-\def\linha{\noalign{\hrule}}
-\def\hidewidth{\hskip-1000pt plus 1fill}
-\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
-\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
-\hfil#& \vrule#& \hfil#\hfil& \vrule#&
-\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
-&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
-Sucesso\hidewidth&&
-\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
-&&SFMT&&91\%&&Xorshiro**&&90\%&\cr\linha
-&&PCG&&92\%&&\monoespaco{rand()}&&70\%&\cr\linha
-&&ChaCha20&&92\%&&&&&\cr\linha}}
-
-Novamente com exceção do uso do \monoespaco{rand}, os testes ficaram
-próximos do valor esperado para todos os algoritmos, apenas com o
-Xorshro** tendo uma taxa ligeiramente menor de sucesso.
-
-\subsecao{3.4. Teste de Pôquer}
-
-Neste teste interpretamos o retorno de nossos geradores como
-sequências de números de 0 a 15. Geramos então sucessivas tuplas com 5
-elementos. E fazemos a contagem de fenômenos como tuplas em que todos
-os valores são diferentes, todos são iguais, há quatro valores iguais,
-há uma tripla e um par, há uma tripla, há dois pares ou há só um
-par. Medimos o quanto os valores obtidos divergem do que seria
-esperado com valores completamente aleatórios.
-
-O resultado obtido com a semente 3526282783 escolhida aleatoriamente
-foi:
-
-\vbox{%A forma mais gseral de remover espaçamento entre linhas:
-\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
-\def\linha{\noalign{\hrule}}
-\def\hidewidth{\hskip-1000pt plus 1fill}
-\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
-\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
-\hfil#& \vrule#& \hfil#\hfil& \vrule#&
-\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
-&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
-Sucesso\hidewidth&&
-\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
-&&SFMT&&93\%&&Xorshiro**&&92\%&\cr\linha
-&&PCG&&92\%&&\monoespaco{rand()}&&91\%&\cr\linha
-&&ChaCha20&&91\%&&&&&\cr\linha}}
-
-\subsecao{3.5. Teste do Colecionador}
-
-Este teste é um complemento do anterior. Enquanto o anterior mostrava
-a equidistributividade de uma mão de pôquer, este tenta medir o quão
-aleatória é a ordem na qual obtemos cada valor de 4 bits. Geramos
-valores novos até que tenhamos gerado os 16 valores diferentes, quando
-encerramos. Fazemos isso um total de 4408394 vezes. E notamos em
-quantas dessas tentativas paramos de gerar novos valores por já termos
-obtido todos após 16, 17, $\ldots$, 115 ou 116+ tentativas. O teste
-compara então a quantidade que cada caso ocorreu comparando com o
-esperado.
-
-Para a semente 3499714725 escolhida aleatoriamente, o nosso resultado
-foi:
-
-\vbox{%A forma mais gseral de remover espaçamento entre linhas:
-\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
-\def\linha{\noalign{\hrule}}
-\def\hidewidth{\hskip-1000pt plus 1fill}
-\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
-\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
-\hfil#& \vrule#& \hfil#\hfil& \vrule#&
-\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
-&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
-Sucesso\hidewidth&&
-\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
-&&SFMT&&93\%&&Xorshiro**&&91\%&\cr\linha
-&&PCG&&93\%&&\monoespaco{rand()}&&00\%&\cr\linha
-&&ChaCha20&&92\%&&&&&\cr\linha}}
-
-Mais uma vez o algoritmo da biblioteca padrão tem um desempenho
-catastrófico, mas os demais demonstram uma qualidade equivalente.
-
-\subsecao{3.6. Teste da Permutação}
-
-Este teste consiste em gerar números entre 0 e 7, ignorando valores
-repetidos até que os oito valores diferentes apareçam. Em seguida,
-repetimos o teste e vamos contando todas as diferentes permutações
-destes oito valores assim obtida, verificando se a distribuição das
-$8!$ diferentes permutações está de acordo com o esperado.
-
-Para a semente 787985252 escolhida aleatoriamente, o nosso resultado
-foi:
+$1/2^d$. No nosso caso escolhemos $d=15$. O resultado obtido foi:
 
 \vbox{%A forma mais gseral de remover espaçamento entre linhas:
 \baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
@@ -1047,11 +1298,122 @@ foi:
 Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&92\%&&Xorshiro**&&92\%&\cr\linha
-&&PCG&&93\%&&\monoespaco{rand()}&&03\%&\cr\linha
+&&PCG&&93\%&&\monoespaco{LCG}&&91\%&\cr\linha
+&&ChaCha20&&93\%&&&&&\cr\linha}}
+
+\subsecao{3.3. Teste de lacuna}
+
+Este teste também foi sugerido em [Knuth, 1998]. Mas ao invés de fazer
+a medida de lacuna interpretando os números obtidos como entre 0 e 1
+como sugerido (o que talvez desse um peso alto para os bits mais
+significativos), nós medimos a lacuna de bits: interpretamos os
+valores retornados pelo gerados como uma sequência contínua de bits. E
+contamos o tamanho das lacunas encontradas (sequências de bits 0
+terminadas em bits 1).
+
+Por exemplo, na sequência ``100110010100001'' obtemos as lacunas ``1''
+(tamanho 0), ``001'' (tamanho 2), ``1'' (tamanho 0), ``001'' (tamanho
+2), ``01'' (tamanho 1) e ``00001'' (tamanho 4). Em cada gerador
+obtemos uma amostragem de $5\cdot2^{20}$ lacunas e avaliamos a
+quantidade de cada tamanho de lacunas com um teste de
+chi-quadrado. Aplicamos então a mesma avaliação dos outros testes e
+medimos a taxa de sucesso. O resultado obtido foi:
+
+\vbox{%A forma mais gseral de remover espaçamento entre linhas:
+\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
+\def\linha{\noalign{\hrule}}
+\def\hidewidth{\hskip-1000pt plus 1fill}
+\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
+\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
+\hfil#& \vrule#& \hfil#\hfil& \vrule#&
+\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
+&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+Sucesso\hidewidth&&
+\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+&&SFMT&&92\%&&Xorshiro**&&92\%&\cr\linha
+&&PCG&&91\%&&\monoespaco{LCG}&&86\%&\cr\linha
+&&ChaCha20&&91\%&&&&&\cr\linha}}
+
+\subsecao{3.4. Teste de Pôquer}
+
+Neste teste interpretamos o retorno de nossos geradores como
+sequências de números de 0 a 15. Geramos então sucessivas tuplas com 5
+elementos. E fazemos a contagem de fenômenos como tuplas em que todos
+os valores são diferentes, todos são iguais, há quatro valores iguais,
+há uma tripla e um par, há uma tripla, há dois pares ou há só um
+par. Medimos o quanto os valores obtidos divergem do que seria
+esperado com valores completamente aleatórios.
+
+O resultado obtido foi:
+
+\vbox{%A forma mais gseral de remover espaçamento entre linhas:
+\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
+\def\linha{\noalign{\hrule}}
+\def\hidewidth{\hskip-1000pt plus 1fill}
+\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
+\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
+\hfil#& \vrule#& \hfil#\hfil& \vrule#&
+\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
+&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+Sucesso\hidewidth&&
+\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+&&SFMT&&92\%&&Xorshiro**&&93\%&\cr\linha
+&&PCG&&91\%&&\monoespaco{LCG}&&92\%&\cr\linha
 &&ChaCha20&&92\%&&&&&\cr\linha}}
 
-O algoritno da biblioteca padrão novamente é o único com uma qualidade
-notavelmente ruim.
+\subsecao{3.5. Teste do Colecionador}
+
+Este teste é um complemento do anterior. Enquanto o anterior mostrava
+a equidistributividade de uma mão de pôquer, este tenta medir o quão
+aleatória é a ordem na qual obtemos cada valor de 4 bits. Geramos
+valores novos até que tenhamos gerado os 16 valores diferentes, quando
+encerramos. Fazemos isso um total de 4408394 vezes. E notamos em
+quantas dessas tentativas paramos de gerar novos valores por já termos
+obtido todos após 16, 17, $\ldots$, 115 ou 116+ tentativas. O teste
+compara então a quantidade que cada caso ocorreu comparando com o
+esperado.
+
+O resultado do teste foi:
+
+\vbox{%A forma mais gseral de remover espaçamento entre linhas:
+\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
+\def\linha{\noalign{\hrule}}
+\def\hidewidth{\hskip-1000pt plus 1fill}
+\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
+\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
+\hfil#& \vrule#& \hfil#\hfil& \vrule#&
+\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
+&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+Sucesso\hidewidth&&
+\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+&&SFMT&&91\%&&Xorshiro**&&92\%&\cr\linha
+&&PCG&&92\%&&\monoespaco{LCG}&&00\%&\cr\linha
+&&ChaCha20&&92\%&&&&&\cr\linha}}
+
+\subsecao{3.6. Teste da Permutação}
+
+Este teste consiste em gerar números entre 0 e 7, ignorando valores
+repetidos, até que os oito valores diferentes apareçam. Em seguida,
+repetimos o teste e vamos contando todas as diferentes permutações
+destes oito valores assim obtida, verificando se a distribuição das
+$8!$ diferentes permutações está de acordo com o esperado.
+
+O nosso resultado foi:
+
+\vbox{%A forma mais gseral de remover espaçamento entre linhas:
+\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
+\def\linha{\noalign{\hrule}}
+\def\hidewidth{\hskip-1000pt plus 1fill}
+\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
+\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
+\hfil#& \vrule#& \hfil#\hfil& \vrule#&
+\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
+&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+Sucesso\hidewidth&&
+\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+&&SFMT&&93\%&&Xorshiro**&&92\%&\cr\linha
+&&PCG&&93\%&&\monoespaco{LCG}&&02\%&\cr\linha
+&&ChaCha20&&92\%&&&&&\cr\linha}}
 
 \subsecao{3.7. Teste de Tamanho de Sequêncas Ascendentes}
 
@@ -1064,8 +1426,7 @@ Para este teste escolhemos gerar permutações de números entre 0 e
 8192. E fizemos uma análise estatística da quantidade de sequências
 ascendentes de 1, 2, 3, 4, 5 ou maiores ou iguais a 6 elementos.
 
-O teste foi feito com a semente escolhida aleatoriamente 3022766729 e
-o resultado foi:
+O resultado obtido foi:
 
 \vbox{%A forma mais gseral de remover espaçamento entre linhas:
 \baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
@@ -1078,15 +1439,9 @@ o resultado foi:
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
 Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
-&&SFMT&&92\%&&Xorshiro**&&89\%&\cr\linha
-&&PCG&&90\%&&\monoespaco{rand()}&&91\%&\cr\linha
-&&ChaCha20&&92\%&&&&&\cr\linha}}
-
-Apesar desta semente ter deixado o valor do Xorshiro baixo, os demais
-geradores também tem seus valores ocasionalmente baixando para 89\% em
-outras sementes. As causas ainda estão para ser investigadas, mas como
-isso afeta todos os algoritmos, é possível que a causa seja alguma
-perda de precisão na implementação do teste.
+&&SFMT&&92\%&&Xorshiro**&&91\%&\cr\linha
+&&PCG&&90\%&&\monoespaco{LCG}&&90\%&\cr\linha
+&&ChaCha20&&90\%&&&&&\cr\linha}}
 
 \subsecao{3.8. Teste do Maior de $t$}
 
@@ -1095,8 +1450,7 @@ valor (no nosso caso foi $2^6-1$) e armazenar o maior dos valores. No
 nosso caso foi escolhido $t=3$. Em seguida, compara-se a distribuição
 dos maiores valores com o que é estatisticamente esperado.
 
-O resultado obtido com a semente escolhida aleatoriamente 3802694961
-foi:
+O resultado foi:
 
 \vbox{%A forma mais gseral de remover espaçamento entre linhas:
 \baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
@@ -1109,12 +1463,9 @@ foi:
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
 Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
-&&SFMT&&91\%&&Xorshiro**&&93\%&\cr\linha
-&&PCG&&91\%&&\monoespaco{rand()}&&00\%&\cr\linha
+&&SFMT&&92\%&&Xorshiro**&&92\%&\cr\linha
+&&PCG&&91\%&&\monoespaco{LCG}&&86\%&\cr\linha
 &&ChaCha20&&92\%&&&&&\cr\linha}}
-
-Todos os algoritmos exceto o \texttt{rand} da biblioteca padrão C
-apresentam uma qualidade boa no teste.
 
 \subsecao{3.9. Teste de Colisões}
 
@@ -1133,7 +1484,7 @@ onde o número de colisões esperada é ajustada para que a saída deste
 teste tenha uma porcentagem de sucesso esperada semelhante aos testes
 anteriores com o Chi-Quadrado (que é próximo de 92\%).
 
-O resultado do teste para a semente 1300497058 foi:
+O resultado do teste foi:
 
 \vbox{%A forma mais gseral de remover espaçamento entre linhas:
 \baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
@@ -1146,12 +1497,9 @@ O resultado do teste para a semente 1300497058 foi:
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
 Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
-&&SFMT&&94\%&&Xorshiro**&&92\%&\cr\linha
-&&PCG&&94\%&&\monoespaco{rand()}&&57\%&\cr\linha
-&&ChaCha20&&91\%&&&&&\cr\linha}}
-
-Novamente a menor qualidade do gerador da biblioteca padrão é
-aparente.
+&&SFMT&&94\%&&Xorshiro**&&93\%&\cr\linha
+&&PCG&&94\%&&\monoespaco{LCG}&&92\%&\cr\linha
+&&ChaCha20&&93\%&&&&&\cr\linha}}
 
 \subsecao{3.10. Teste de Espaçamento de Aniversário}
 
@@ -1167,7 +1515,7 @@ distribuição de espaçaments repetidos com o que seria
 esperado. Aplicamos então o teste do Chi-Quadrado e por fim repetimos
 tudo isso cerca de 3000 vezes para obter a porcentagem de sucesso.
 
-Nosso resultado para a semente gerada aleatoriamente 816475836 foi:
+Nosso resultado foi:
 
 \vbox{%A forma mais gseral de remover espaçamento entre linhas:
 \baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
@@ -1181,8 +1529,40 @@ Nosso resultado para a semente gerada aleatoriamente 816475836 foi:
 Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&92\%&&Xorshiro**&&92\%&\cr\linha
-&&PCG&&92\%&&\monoespaco{rand()}&86\%&\cr\linha
+&&PCG&&92\%&&\monoespaco{LCG}&92\%&\cr\linha
 &&ChaCha20&&91\%&&&&&\cr\linha}}
+
+\subsecao{3.11. Teste da Correlação Serial}
+
+Este teste gera uma sequência de $n$ elementos (onde $n=1000$) de 64
+bits, que aqui vamos interpretar como elementos entre 0 e 1. Ou seja,
+dividimos o resultado por $2^{61}-1$ para obter um número em ponto
+flutuante. Calculamos então o coeficiente de correlação serial entre
+cada um dos números gerados quando comparado com cada número anterior
+e medimos se ele está dentro de um intervalo considerado
+aceitável. Mas não fazemos isso apenas comparando cada númro com seu
+anterior, mas também cada número com o duas posições atrás, três
+posições, até qualquer deslocamento de até $n/2$ posições atrás. A
+faixa de resultados testada é calibrada para que o resultado esperado
+seja em torno de 92\% ou 93\% como nos testes anteriores, mesmo que
+aqui não estejamos usando o mesmo teste Chi-Quadrado.
+
+O resultado obtido foi:
+
+\vbox{%A forma mais gseral de remover espaçamento entre linhas:
+\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
+\def\linha{\noalign{\hrule}}
+\def\hidewidth{\hskip-1000pt plus 1fill}
+\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
+\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
+\hfil#& \vrule#& \hfil#\hfil& \vrule#&
+\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
+&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+Sucesso\hidewidth&&
+\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+&&SFMT&&93\%&&Xorshiro**&&93\%&\cr\linha
+&&PCG&&93\%&&\monoespaco{LCG}&93\%&\cr\linha
+&&ChaCha20&&93\%&&&&&\cr\linha}}
 
 
 \secao{4. Medida de Desempenho}
@@ -1233,7 +1613,7 @@ e menor que o Xorshiro:
 \iniciocodigo
 @<Escolhe Algoritmo Padrão do RNG@>=
 #if !defined(W_RNG_MERSENNE_TWISTER) && !defined(W_RNG_XORSHIRO) && \
-!defined(W_RNG_PCG) && !defined(W_RNG_ISO_C) && !defined(W_RNG_CRYPTO)
+!defined(W_RNG_PCG) && !defined(W_RNG_LCG) && !defined(W_RNG_CHACHA20)
 #ifdef __SIZEOF_INT128__
 #define W_RNG_MERSENNE_TWISTER
 #else
@@ -1253,5 +1633,7 @@ Seminumerical Algorithms'', Addison-Wesley Professional, terceira
 edição.}
 
 \referencia{Saito, M.; Matsumoto M. (2006) ``SIMD-oriented fast Mersenne Twister: a 128-bit pseudorandom number generator'', Monte Carlo and Quasi-Monte Carlo Methods, Springer, p. 607--622}.
+
+\referencia{Steele, G.; Vigna S. (2021) ``Computationally Easy, Spectrally Good Multipliers for Congruential Pseudorandom Number Generators'', arXiv preprint arXiv:2001.05304}.
 
 \fim

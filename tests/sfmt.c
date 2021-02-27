@@ -375,7 +375,6 @@ void sfmt_init_by_array(sfmt_t * sfmt, uint32_t *init_key, int key_length) {
         lag = 3;
     }
     mid = (size - lag) / 2;
-
     memset(sfmt, 0x8b, sizeof(sfmt_t));
     if (key_length + 1 > SFMT_N32) {
         count = key_length + 1;
@@ -388,7 +387,6 @@ void sfmt_init_by_array(sfmt_t * sfmt, uint32_t *init_key, int key_length) {
     r += key_length;
     psfmt32[idxof(mid + lag)] += r;
     psfmt32[idxof(0)] = r;
-
     count--;
     for (i = 1, j = 0; (j < count) && (j < key_length); j++) {
         r = func1(psfmt32[idxof(i)] ^ psfmt32[idxof((i + mid) % SFMT_N32)]

@@ -14,24 +14,13 @@ test: tests/test.c src/random.c
 	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_PCG -pthread tests/test.c src/random.c -o test_pcg -lm
 	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_MERSENNE_TWISTER -pthread tests/test.c src/random.c -o test_sfmt -lm
 	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_XORSHIRO -pthread tests/test.c src/random.c -o test_xorshiro -lm
-	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_ISO_C -pthread tests/test.c src/random.c -o test_iso -lm
-	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_CRYPTO -pthread tests/test.c src/random.c -o test_crypto -lm
-	./test_crypto $(SEED)
-	./test_sfmt $(SEED)
-	./test_xorshiro $(SEED)
-	./test_pcg $(SEED)
-	./test_iso $(SEED)
-test_performance: tests/test.c src/random.c
-	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_PCG -pthread benchmark/benchmark.c src/random.c -o bench_pcg  -lm
-	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_MERSENNE_TWISTER  -pthread benchmark/benchmark.c src/random.c -o bench_sfmt -lm
-	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_XORSHIRO -pthread benchmark/benchmark.c src/random.c -o bench_xorshiro  -lm
-	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_ISO_C  -pthread benchmark/benchmark.c src/random.c -o bench_iso  -lm
-	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_CRYPTO  -pthread benchmark/benchmark.c src/random.c -o bench_crypto  -lm
-	./bench_sfmt
-	./bench_xorshiro
-	./bench_pcg
-	./bench_iso
-	./bench_crypto
+	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_LCG -pthread tests/test.c src/random.c -o test_lcg -lm
+	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_CHACHA20 -pthread tests/test.c src/random.c -o test_chacha -lm
+	./test_chacha
+	./test_sfmt
+	./test_xorshiro
+	./test_pcg
+	./test_lcg
 clean:
 	rm -f *~ *.core *.scn *.dvi *.idx *.log tests/*~ test bench benchmark/*~
 distclean: clean

@@ -15,6 +15,12 @@
 
 int numero_de_testes = 0, acertos = 0, falhas = 0;
 
+/* SEED TESTED */
+uint64_t seed[] = {
+  0x32147198b5436569, 0x260287febfeb34e9, 0x0b6cc94a91a265e4, 0xc6a109c50dd52f1b,
+  0x8298497f3992d73a};
+size_t seed_size = sizeof(seed) / 8;
+
 #ifdef W_RNG_MERSENNE_TWISTER
 #include "sfmt.c"
 #elif defined(W_RNG_XORSHIRO)
@@ -23,26 +29,26 @@ int numero_de_testes = 0, acertos = 0, falhas = 0;
 #include "pcg.c"
 #endif
 
-// Todo: fix when size in bits does not divide 32
-uint32_t rng_value;
+
+uint64_t rng_value;
 int rng_bit, rng_bits = 0;
 int read_random_bits(struct _Wrng *my_rng, int size_in_bits){
   int result = 0;
-  if(rng_bits == 0){
+  if(rng_bits == 0){// Need to generate next random bits
     rng_value = _Wrand(my_rng);
     result = rng_value % (1 << size_in_bits);
     rng_value = rng_value >> (size_in_bits);
-    rng_bits = 32 - size_in_bits;    
+    rng_bits = 64 - size_in_bits;    
   }
-  else if(size_in_bits > rng_bits){
+  else if(size_in_bits > rng_bits){// We have some, but need more random bits
     result = rng_value;
     result = result << (size_in_bits - rng_bits);
     rng_value = _Wrand(my_rng);
     result += rng_value % (1 << (size_in_bits - rng_bits));
     rng_value = rng_value >> (size_in_bits - rng_bits);
-    rng_bits = 32 - (size_in_bits - rng_bits);
+    rng_bits = 64 - (size_in_bits - rng_bits);
   }
-  else{
+  else{ // We still have remaining random bits, dont generate more
     result = rng_value % (1 << size_in_bits);
     rng_value = rng_value >> (size_in_bits);
     rng_bits -= size_in_bits;    
@@ -201,28 +207,21 @@ void imprime_resultado(void){
 	 numero_de_testes, acertos, falhas);
 }
 
-/* Globais */
-
-uint32_t seed;
-
-void initialize_seed(void){
-  arc4random_buf(&seed, 4);
-}
-
 /* Início dos Testes */
 #if defined(W_RNG_MERSENNE_TWISTER)
 void test_mersenne_twister(void){
   bool equal = true;
   int i;
   struct SFMT_T ref_rng;
-  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
-  sfmt_init_gen_rand(&ref_rng, seed);
+  //uint64_t array[size];
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed_size, seed);
+  sfmt_init_by_array(&ref_rng, (uint32_t *) seed, seed_size * 2);
   {
-    char *p1 = (char *) &(ref_rng.state), *p2 = (char *) my_rng -> w;
+    unsigned char *p1 = (char *) &(ref_rng.state), *p2 = (char *) my_rng -> w;
     for(i = 0; i < _W * _N / 8; i ++){
       if(*p1 != *p2){
 	equal = false;
-	break;
+	//break;
       }
       p1 ++;
       p2 ++;
@@ -230,10 +229,11 @@ void test_mersenne_twister(void){
     assert("SFMT initialization works as in reference code", equal);
     equal = true;
   }
+    //sfmt_fill_array64(&ref_rng, array, size);
   for(i = 0; i < 1000; i ++){
     uint64_t a, b;
     a = _Wrand(my_rng);
-    b = sfmt_genrand_uint32(&ref_rng);
+    b = sfmt_genrand_uint64(&ref_rng);
     if(a != b){
       equal = false;
       break;
@@ -248,14 +248,12 @@ void test_mersenne_twister(void){
 void test_xorshiro(void){
   bool equal = true;
   int i;
-  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed_size, seed);
   for(i = 0; i < 4; i ++)
     s[i] = my_rng -> w[i];
   for(i = 0; i < 1000; i ++){
     uint64_t a, b;
-    _Wrand(my_rng);
-    a = my_rng -> result;
-    _Wrand(my_rng);
+    a = _Wrand(my_rng);
     b = next();
     if(a != b){
       equal = false;
@@ -271,14 +269,19 @@ void test_xorshiro(void){
 void test_pcg(void){
   bool equal = true;
   int i;
-  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
-  pcg32_random_t pcg_rng;
-  pcg_rng.state = my_rng -> state;
-  pcg_rng.inc = my_rng -> increment;
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed_size, seed);
+  struct pcg64_random_t ref_rng;
+  pcg64_srandom_r(&ref_rng,
+		  PCG_128BIT_CONSTANT(seed[0], seed[1]),
+		  PCG_128BIT_CONSTANT(seed[2], seed[3]));
+  if(my_rng -> state != ref_rng.state || my_rng -> increment != ref_rng.inc)
+    equal = false;
+  assert("PCG initialization works as in reference code", equal);
+  equal = true;
   for(i = 0; i < 1000; i ++){
     uint64_t a, b;    
     a = _Wrand(my_rng);
-    b = pcg32_random_r(&pcg_rng);
+    b = pcg64_random_r(&ref_rng);
     if(a != b){
       equal = false;
       break;
@@ -292,10 +295,11 @@ void test_pcg(void){
 // Thread test
 #define THREAD_NUMBER 1000
 #if defined(_WIN32)
-DWORD _WINAPI thread_function(void *my_rng){
+DWORD _WINAPI thread_function(void *my_rng)
 #else
-void *thread_function(void *my_rng){
+void *thread_function(void *my_rng)
 #endif
+{
   struct _Wrng *rng = (struct _Wrng *) my_rng;
   int i;
   for(i = 0; i < 5; i ++)
@@ -306,7 +310,7 @@ void *thread_function(void *my_rng){
   return NULL;
 #endif
 }
- 
+
 void test_multithread(void){
   uint32_t a, b;
   int i;
@@ -315,8 +319,8 @@ void test_multithread(void){
 #else
   pthread_t thread[THREAD_NUMBER];
 #endif
-  struct _Wrng *my_rng1 = _Wcreate_rng(malloc, seed);
-  struct _Wrng *my_rng2 = _Wcreate_rng(malloc, seed);
+  struct _Wrng *my_rng1 = _Wcreate_rng(malloc, seed_size, seed);
+  struct _Wrng *my_rng2 = _Wcreate_rng(malloc, seed_size, seed);
   for(i = 0; i < THREAD_NUMBER; i ++){
 #if defined(_WIN32)
     thread[i] = CreateThread(NULL, 0, thread_function, my_rng1, 0, NULL);
@@ -350,7 +354,7 @@ uint32_t reverse(uint32_t x){
 }
 
 void test_equidistribution(void){
-  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed_size, seed);
   int i, three_tests, all_tests;
   int penalty, fails = 0;
   const int n = 10000;
@@ -375,7 +379,7 @@ void test_equidistribution(void){
 }
 
 void test_serial(void){
-  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed_size, seed);
   int i, round_of_measures, three_tests, total_tests;
   int penalty, fails = 0;
   const int size = 15;
@@ -408,7 +412,7 @@ void test_collector(void){
   double expect[101] = {881657.9515664614, 117554.3935421949, 28862.4597955261, 9834.6159303274, 4151.8471814280, 2043.8330495174, 1130.2241210724, 684.7723865789, 446.5752400178, 309.4014816677, 225.4720134293, 171.4810062499, 135.2665663802, 110.1098645734, 92.1136805065, 78.9202502949, 69.0498996206, 61.5437070165, 55.7624048321, 51.2690472285, 47.7583139840, 45.0126672746, 42.8744459230, 41.2276812535, 39.9859923191, 39.0843700984, 38.4735017234, 38.1157857221, 37.9824931025, 38.0517176836, 38.3068784058, 38.7356132332, 39.3289546220, 40.0807100406, 40.9869936498, 42.0458707346, 43.2570872144, 44.6218640874, 46.1427420087, 47.8234650383, 49.6688953706, 51.6849528952, 53.8785749364, 56.2576926473, 58.8312213708, 61.6090629272, 64.6021182752, 67.8223093754, 71.2826093822, 74.9970805244, 78.9809192229, 83.2505081438, 87.8234750126, 92.7187581160, 97.9566785071, 103.5590190039, 109.5491101400, 115.9519232839, 122.7941711985, 130.1044163646, 137.9131874391, 146.2531042688, 155.1590119228, 164.6681242584, 174.8201775780, 185.6575949861, 197.2256621031, 209.5727148437, 222.7503400260, 236.8135896260, 251.8212095602, 267.8358839344, 284.9244957684, 303.1584052718, 322.6137468258, 343.3717458982, 365.5190572106, 389.1481255582, 414.3575707844, 441.2525985090, 469.9454383189, 500.5558112444, 533.2114284663, 568.0485233301, 605.2124188820, 644.8581332899, 687.1510256710, 732.2674850155, 780.3956650755, 831.7362682813, 886.5033819494, 944.9253702669, 1007.2458257671, 1073.7245842616, 1144.6388074560, 1220.2841377602, 1300.9759301053, 1387.0505658986, 1478.8668545906, 1576.8075286957, 104.7974528089};
   // Also recompute if d or t are changed:
   unsigned long n = 4408394ul;
-  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed_size, seed);
   int thousand_tests, fails = 0, three_tests, penalty, card;
   for(thousand_tests = 0; thousand_tests < 1000; thousand_tests ++){
     penalty = 0;
@@ -477,8 +481,8 @@ void test_collector(void){
 
  
 void test_poker(void){
-   struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
-   int all_tests, fails = 0, all_hands;
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed_size, seed);
+  int all_tests, fails = 0, all_hands;
    const unsigned int n = 327080;
    for(all_tests = 0; all_tests < 1000; all_tests ++){
      int penalty = 0, three_tests;
@@ -570,7 +574,7 @@ void test_poker(void){
   
 void test_gap(void){
   int i, fails = 0, all_tests, three_tests, penalty;
-  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed_size, seed);
   for(all_tests = 0; all_tests < 1000; all_tests ++){
     penalty = 0;
     for(three_tests = 0; three_tests < 3; three_tests ++){
@@ -641,7 +645,7 @@ void test_permutation(void){
   int fails = 0, all_tests, three_tests, penalty;
   unsigned long long i;
   const unsigned long long  n = 5 * fatorial(1 << BITS_TESTED); // 5*8!
-  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed_size, seed);
   for(all_tests = 0; all_tests < 1000; all_tests ++){
     penalty = 0;
     for(three_tests = 0; three_tests < 3; three_tests ++){
@@ -691,7 +695,7 @@ void test_runs_up(void){
 		    {22615, 45234, 67852, 90470, 113262, 139476},
 		    {27892, 55789, 83685, 111580, 139476, 172860}};
   int fails = 0, all_tests, three_tests, penalty, j, c, prev;
-  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed_size, seed);
   for(all_tests = 0; all_tests < 1000; all_tests ++){
     penalty = 0;
     for(three_tests = 0; three_tests < 3; three_tests ++){
@@ -742,7 +746,7 @@ void test_runs_up(void){
 }
 
 void test_maximum_of_t(void){
-  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed_size, seed);
   int i, j, three_tests, total_tests;
   int penalty, fails = 0;
   const int t = 3;
@@ -780,7 +784,7 @@ void test_maximum_of_t(void){
 }
 
 void test_collision(void){
-  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed_size, seed);
   int i, three_tests, total_tests;
   int penalty, fails = 0;
   const int BITS = 20;
@@ -815,7 +819,7 @@ void test_collision(void){
 }
 
 void test_birthday_spacing(void){
-  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed);
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed_size, seed);
   int i, j, three_tests, total_tests, spacing_test;
   int penalty, fails = 0;
   const int BITS = 25;
@@ -875,39 +879,92 @@ void test_birthday_spacing(void){
   _Wdestroy_rng(free, my_rng);
 }
  
+void measure_time(void){
+  int i;
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed_size, seed);
+  struct timeval _begin, _end;
+  gettimeofday(&_begin, NULL);
+  for(i = 0; i < 100000000; i ++)
+    _Wrand(my_rng);
+  gettimeofday(&_end, NULL);
+  printf("Generated 100 million of random values in %f seconds.\n",
+	 (1000000 * (_end.tv_sec - _begin.tv_sec) + _end.tv_usec -
+	  _begin.tv_usec) / 1000000.0);
+}
+
+void test_serial_correlation(void){
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed_size, seed);
+  int i, shift, total_tests;
+  int max_fails = 0;
+  const int N = 1000;
+  const double min = ((-1.0) / (N - 1.0)) -
+    2.0 * sqrt(((double) (N * N))/((N-1)*(N-1)*(N-2)));
+  const double max = ((-1.0) / (N - 1.0)) +
+    2.0 * sqrt(((double) (N * N))/((N-1)*(N-1)*(N-2)));
+  for(shift = 1; shift < 2; shift ++){
+    int fails = 0;
+    for(total_tests = 0; total_tests < 1000; total_tests ++){
+      double values[N];
+      double a = 0.0, b = 0.0, c = 0.0, result;
+      for(i = 0; i < N; i ++)
+	values[i] = ((double) _Wrand(my_rng)) / (double) 0xffffffffffffffff;
+      for(i = 0; i < N; i ++){
+	a += values[i] * values[(i + shift) % N];
+	b += values[i];
+	c += values[i] * values[i];
+      }
+      a *= N;
+      b *= b;
+      c *= N;
+      result = (a - b) / (c - b);
+      //printf("[%f]", result);
+      if(result < min || result > max)
+	fails ++;
+    }
+    if(fails  > max_fails)
+      max_fails = fails;
+  }
+  quality("Quality of serial correlation test", (double) (1000 - max_fails) /
+	  (double) 1000);
+  //printf("[%f-%f]\n", min, max);
+  _Wdestroy_rng(free, my_rng);
+}
+
 int main(int argc, char **argv){
-  if(argc <= 1)
-    initialize_seed();
-  else
-    seed = strtoull(argv[1], NULL, 10);
+#if defined(W_RNG_LCG)
+  printf("Starting LCG tests.\n\n");
+#elif defined(W_RNG_MERSENNE_TWISTER)
+  printf("Starting MERSENNE TWISTER tests.\n\n");
+#elif defined(W_RNG_XORSHIRO)
+  printf("Starting XORSHIRO** tests.\n\n");
+#elif defined(W_RNG_PCG)
+  printf("Starting PCG tests.\n\n");
+#elif defined(W_RNG_CHACHA20)
+  printf("Starting ChaCha20 RNG tests.\n\n");
+#endif
+  printf("Recommended size for seed vector: (%d-%d)\n",
+	 _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE,
+	 _W_RNG_MAXIMUM_RECOMMENDED_SEED_SIZE);
+  //measure_time();
 #if defined(W_RNG_MERSENNE_TWISTER)
-  printf("Starting MERSENNE TWISTER tests. Seed: %lu\n\n", (long unsigned int) seed);
   test_mersenne_twister();
 #elif defined(W_RNG_XORSHIRO)
-  printf("Starting XORSHIRO** tests. Seed: %lu\n\n", (long unsigned int) seed);
   test_xorshiro();
 #elif defined(W_RNG_PCG)
-  printf("Starting PCG tests. Seed: %lu\n\n", (long unsigned int) seed);
   test_pcg();
-#elif defined(W_RNG_ISO_C)
-  printf("Starting ISO C RNG tests. Seed: %lu\n\n", (long unsigned int) seed);
-#elif defined(W_RNG_CRYPTO)
-  printf("Starting Crypto RNG tests. Seed: %lu\n\n", (long unsigned int) seed);
 #endif
-#if !defined(W_RNG_ISO_C) && !defined(W_RNG_CRYPTO)
-  test_multithread();
-#endif
-  // Argument means: should reverse the obtained bits?
-  //test_equidistribution();
-  //test_serial();
-  //test_gap();
-  //test_poker();
-  //test_collector();
-  //test_permutation();
-  //test_runs_up();
-  //test_maximum_of_t();
-  //test_collision();
-  test_birthday_spacing();
+  /*  test_multithread();
+  test_equidistribution();
+  test_serial();
+  test_gap();
+  test_poker();
+  test_collector();
+  test_permutation();
+  test_runs_up();
+  test_maximum_of_t();
+  test_collision();
+  test_birthday_spacing();*/
+  test_serial_correlation();
   imprime_resultado();
   return 0;
 }
