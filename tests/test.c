@@ -1,3 +1,4 @@
+#include <sys/time.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -217,7 +218,8 @@ void test_mersenne_twister(void){
   struct _Wrng *my_rng = _Wcreate_rng(malloc, seed_size, seed);
   sfmt_init_by_array(&ref_rng, (uint32_t *) seed, seed_size * 2);
   {
-    unsigned char *p1 = (char *) &(ref_rng.state), *p2 = (char *) my_rng -> w;
+    unsigned char *p1 = (unsigned char *) &(ref_rng.state),
+      *p2 = (unsigned char *) my_rng -> w;
     for(i = 0; i < _W * _N / 8; i ++){
       if(*p1 != *p2){
 	equal = false;
