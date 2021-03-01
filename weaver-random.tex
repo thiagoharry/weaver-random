@@ -1540,12 +1540,18 @@ dividimos o resultado por $2^{61}-1$ para obter um número em ponto
 flutuante. Calculamos então o coeficiente de correlação serial entre
 cada um dos números gerados quando comparado com cada número anterior
 e medimos se ele está dentro de um intervalo considerado
-aceitável. Mas não fazemos isso apenas comparando cada númro com seu
-anterior, mas também cada número com o duas posições atrás, três
-posições, até qualquer deslocamento de até $n/2$ posições atrás. A
-faixa de resultados testada é calibrada para que o resultado esperado
-seja em torno de 92\% ou 93\% como nos testes anteriores, mesmo que
-aqui não estejamos usando o mesmo teste Chi-Quadrado.
+aceitável.
+
+Em seguida, repetimos esta mesma comparação não apenas entre cada
+elemento e seu sucessor, mas também entre cada elemento e o elemento
+duas posições à frente. Depois três posições. Até chegar nas 500
+posições de deslocamento, tentando encontrar qual nos dá o pior índice
+de correlação serial. A medida do pior índice é usada e comparada com
+valores esperados de forma que o esperado seja passar neste teste
+derca de 93\% das vezes. E repetimos isso mil vezes para ver se a
+porcentagem de testes qu passou é próxima desta.
+
+Assim como o anterior, este teste não é uma medida de Chi-Quadrado.
 
 O resultado obtido foi:
 
@@ -1564,13 +1570,34 @@ Sucesso\hidewidth&&
 &&PCG&&93\%&&\monoespaco{LCG}&93\%&\cr\linha
 &&ChaCha20&&93\%&&&&&\cr\linha}}
 
+\subsecao{3.12. Conclusão dos Testes}
+
+O único algoritmo que notavelmente falha em um dos testes é o Gerador
+Linear Congruente. Mesmo sendo construído por parâmetros testados como
+tendo uma quaidade maior, ele falha no Teste do Colecionador. Para um
+algoritmo a ser usado em jogos, isso é bastante ruim. É possível que
+existam itens colecionáveis em um jogo que possam ser obtidos de
+maneira aleatória. Mas usando o LCG, os itens são obtidos com um
+número de tentativas diferente do que seria esperado se fôsse algo
+aleatório.
+
+Entretanto, analizando o teste, o LCG falha não por apresentar
+resultados muito distorcidos neste teste, mas sim por apresentar
+resultado idealizado demais. Dependendo da intenção desejada, isso
+pode não ser um impeditivo para usá-lo.
+
 
 \secao{4. Medida de Desempenho}
 
-Após medir o desempenho dos algoritmos implementados, o seguinte
-resultado foi obtido (as colunas mostram o tempo de geração de cada
-número e o desvio padrão em nanossegundos e o tamanho da esrutura que
-armazena o gerador):
+
+Para medir o desempenho de cada gerador, pedimos para cada um deles
+gerar sequencialmente um total de 100 milhões de números aleatórios de
+64 bits. O teste foi feito em um computador com processador Intel
+Pentium B980 dual core com 2,40 GHz e 4 GB de memória RAM. O Sistema
+Operacional foi o Open BSD 6.7. O teste foi compilado com o Clang
+8.0.1.
+
+O resultado em segundos foi:
 
 \vbox{%A forma mais gseral de remover espaçamento entre linhas:
 \baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
@@ -1581,15 +1608,12 @@ armazena o gerador):
 \hfil#& \vrule#& \hfil#\hfil& \vrule#&
 \hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
-Tempo ($\mu$s)\hidewidth&&
-\omit\hidewidth Desvio ($\mu$s)\hidewidth&&Tamanho (bytes)&\cr\linha
-&&SFMT&&783&&124&&2544&\cr\linha
-&&Xorshiro**&&786&&127&&88&\cr\linha
-&&PCG&&786&&149&&56&\cr\linha}}
+Sucesso\hidewidth&&
+\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+&&SFMT&&9.386125&&Xorshiro**&&7.703922&\cr\linha
+&&PCG&&7.589271&&\monoespaco{LCG}&7.328776&\cr\linha
+&&ChaCha20&&10.278860&&&&&\cr\linha}}
 
-O teste foi feito em um computador com processador Intel Pentium B980
-dual core com 2,40 GHz e 4 GB de memória RAM. O Sistema Operacional
-foi o Ubuntu 18.04.4. O teste foi compilado com o GCC 7.5.0.
 
 \secao{5. Conclusão}
 

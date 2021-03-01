@@ -901,23 +901,22 @@ void test_serial_correlation(void){
     2.0 * sqrt(((double) (N * N))/((N-1)*(N-1)*(N-2)));
   const double max = ((-1.0) / (N - 1.0)) +
     2.0 * sqrt(((double) (N * N))/((N-1)*(N-1)*(N-2)));
-  for(shift = 1; shift < 2; shift ++){
+  for(shift = 1; shift < (N/2); shift ++){
     int fails = 0;
     for(total_tests = 0; total_tests < 1000; total_tests ++){
       double values[N];
-      double a = 0.0, b = 0.0, c = 0.0, result;
+      //double a = 0.0, b = 0.0, c = 0.0, result;
+      double uv = 0.0, u = 0.0, v = 0.0, u2 = 0.0, v2 = 0.0, result;
       for(i = 0; i < N; i ++)
 	values[i] = ((double) _Wrand(my_rng)) / (double) 0xffffffffffffffff;
       for(i = 0; i < N; i ++){
-	a += values[i] * values[(i + shift) % N];
-	b += values[i];
-	c += values[i] * values[i];
+	uv += values[i] * values[(i + shift) % N];
+	u += values[i];
+	v += values[(i + shift) % N];
+	u2 += values[i] * values[i];
+	v2 += values[(i + shift) % N] * values[(i + shift) % N];
       }
-      a *= N;
-      b *= b;
-      c *= N;
-      result = (a - b) / (c - b);
-      //printf("[%f]", result);
+      result = (N * uv - u * v) / sqrt((N * u2 - u * u) * (N * v2 - v * v));
       if(result < min || result > max)
 	fails ++;
     }
@@ -926,7 +925,6 @@ void test_serial_correlation(void){
   }
   quality("Quality of serial correlation test", (double) (1000 - max_fails) /
 	  (double) 1000);
-  //printf("[%f-%f]\n", min, max);
   _Wdestroy_rng(free, my_rng);
 }
 
@@ -945,7 +943,7 @@ int main(int argc, char **argv){
   printf("Recommended size for seed vector: (%d-%d)\n",
 	 _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE,
 	 _W_RNG_MAXIMUM_RECOMMENDED_SEED_SIZE);
-  //measure_time();
+  measure_time();
 #if defined(W_RNG_MERSENNE_TWISTER)
   test_mersenne_twister();
 #elif defined(W_RNG_XORSHIRO)
@@ -953,7 +951,7 @@ int main(int argc, char **argv){
 #elif defined(W_RNG_PCG)
   test_pcg();
 #endif
-  /*  test_multithread();
+  test_multithread();
   test_equidistribution();
   test_serial();
   test_gap();
@@ -963,7 +961,7 @@ int main(int argc, char **argv){
   test_runs_up();
   test_maximum_of_t();
   test_collision();
-  test_birthday_spacing();*/
+  test_birthday_spacing();
   test_serial_correlation();
   imprime_resultado();
   return 0;
