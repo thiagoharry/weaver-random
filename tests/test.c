@@ -295,6 +295,7 @@ void test_pcg(void){
 #endif
 
 // Thread test
+#if !defined(__EMSCRIPTEN__)
 #define THREAD_NUMBER 1000
 #if defined(_WIN32)
 DWORD _WINAPI thread_function(void *my_rng)
@@ -345,6 +346,7 @@ void test_multithread(void){
   _Wdestroy_rng(free, my_rng1);
   _Wdestroy_rng(free, my_rng2);
 }
+#endif
 
 uint32_t reverse(uint32_t x){
   x = ((x & 0x55555555) << 1) | ((x & 0xAAAAAAAA) >> 1); // Swap _<>_
@@ -953,7 +955,9 @@ int main(int argc, char **argv){
 #elif defined(W_RNG_PCG)
   test_pcg();
 #endif
+#if !defined(__EMSCRIPTEN__)
   test_multithread();
+#endif
   test_equidistribution();
   test_serial();
   test_gap();
