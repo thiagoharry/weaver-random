@@ -1,6 +1,3 @@
-#CC=gcc
-FLAGS=-Wall -O2
-
 report:
 	magitex-cweb weaver-random.tex
 	dvipdf weaver-random.dvi
@@ -21,6 +18,8 @@ test: tests/test.c src/random.c
 	./test_xorshiro
 	./test_pcg
 	./test_lcg
+wasm:
+	emcc $(CFLAGS) -Wall -O2 -DW_RNG_PCG tests/test.c src/random.c -o doc/pcg.html -lm
 clean:
 	rm -f *~ *.core *.scn *.dvi *.idx *.log tests/*~ test bench benchmark/*~
 distclean: clean

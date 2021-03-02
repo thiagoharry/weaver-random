@@ -169,7 +169,7 @@ void quality(char *descricao, float valor){
     printf("\033[0;31m[%03d%%]\033[0m\n", (int) (valor*100));
   }
 #else
-  printf("[%03d\%]\n", (int) (valor*100));
+  printf("[%03d%%]\n", (int) (valor*100));
 #endif
 }
 
