@@ -899,7 +899,7 @@ void measure_time(void){
   gettimeofday(&_end, NULL);
   printf("Generated 100 million of random values in %f seconds (sum: %llu).\n",
 	 (1000000 * (_end.tv_sec - _begin.tv_sec) + _end.tv_usec -
-	  _begin.tv_usec) / 1000000.0, dummy_sum);
+	  _begin.tv_usec) / 1000000.0, (unsigned long long) dummy_sum);
 }
 
 void test_serial_correlation(void){

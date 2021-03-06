@@ -1608,8 +1608,8 @@ O resultado em segundos foi:
 \hfil#& \vrule#& \hfil#\hfil& \vrule#&
 \hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
-Sucesso\hidewidth&&
-\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+Tempo (s)\hidewidth&&
+\omit\hidewidth Gerador\hidewidth&&Tempo (s)&\cr\linha
 &&SFMT&&9.386125&&Xorshiro**&&7.703922&\cr\linha
 &&PCG&&7.589271&&\monoespaco{LCG}&7.328776&\cr\linha
 &&ChaCha20&&10.278860&&&&&\cr\linha}}
@@ -1628,8 +1628,8 @@ resultado foi:
 \hfil#& \vrule#& \hfil#\hfil& \vrule#&
 \hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
-Sucesso\hidewidth&&
-\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+Tempo (s)\hidewidth&&
+\omit\hidewidth Gerador\hidewidth&&Tempo (s)&\cr\linha
 &&SFMT&&2.683414&&Xorshiro**&&2.526265&\cr\linha
 &&PCG&&2.266165&&\monoespaco{LCG}&2.360528&\cr\linha
 &&ChaCha20&&7.053677&&&&&\cr\linha}}
@@ -1638,6 +1638,30 @@ Neste cenário, as diferenças entre todos os outros algoritmos e o
 ChaCha20 se tornaram ainda mais evidentes. E de forma interessante, o
 PCG apresentou um desempenho ligeiramente melhor que o LCG.
 
+Usando o mesmo computador, mas compilando usando o Emscripten 2.0.14
+para produzir Web Assembly e executar em uma página de Internet no
+navegador  Firefox 86.0, o resultado foi:
+
+\vbox{%A forma mais gseral de remover espaçamento entre linhas:
+\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
+\def\linha{\noalign{\hrule}}
+\def\hidewidth{\hskip-1000pt plus 1fill}
+\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
+\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
+\hfil#& \vrule#& \hfil#\hfil& \vrule#&
+\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
+&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+Tempo (s)\hidewidth&&
+\omit\hidewidth Gerador\hidewidth&&Tempo (s)&\cr\linha
+&&SFMT&&1.272&&Xorshiro**&&0.445&\cr\linha
+&&PCG&&1.299&&\monoespaco{LCG}&0.344&\cr\linha
+&&ChaCha20&&3.638&&&&&\cr\linha}}
+
+Chama a atenção como o desempenho foi mais rápido compilando e
+executando desta forma que da forma anterior, quando o código
+executava nativamente. Outra informação interessante é que neste
+ambiente o Xorshiro consegue um desempenho bem melhor que o PCG, que
+parece ter uma grande penalidade de desempenho quando executado assim.
 
 \secao{5. Conclusão}
 
