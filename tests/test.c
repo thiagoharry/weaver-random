@@ -159,14 +159,17 @@ void quality(char *descricao, float valor){
   numero_de_testes ++;
   printf("%s%s", descricao, pontos);
 #if defined(__unix__) && !defined(__EMSCRIPTEN__)
-  if(valor > 0.6666666){
+  if(valor > 0.85){
     printf("\e[32m[%03d%%]\033[0m\n", (int) (valor*100));
+    acertos ++;
   }
-  else if(valor > 0.333333333){
+  else if(valor > 0.5){
     printf("\e[1;33m[%03d%%]\033[0m\n", (int) (valor*100));
+    falhas ++;
   }
   else{
     printf("\033[0;31m[%03d%%]\033[0m\n", (int) (valor*100));
+    falhas ++;
   }
 #else
   printf("[%03d%%]\n", (int) (valor*100));
