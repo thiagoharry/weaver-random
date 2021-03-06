@@ -940,7 +940,7 @@ int main(int argc, char **argv){
 #elif defined(W_RNG_XORSHIRO)
   printf("Starting XORSHIRO** tests.\n\n");
 #elif defined(W_RNG_PCG)
-  printf("Starting PCG tests.\n\n");
+  printf("Starting PCG tests...\n\n");
 #elif defined(W_RNG_CHACHA20)
   printf("Starting ChaCha20 RNG tests.\n\n");
 #endif
