@@ -960,6 +960,7 @@ int main(int argc, char **argv){
 #endif
   test_equidistribution();
   test_serial();
+#if !defined(__EMSCRIPTEN__)
   test_gap();
   test_poker();
   test_collector();
@@ -969,6 +970,7 @@ int main(int argc, char **argv){
   test_collision();
   test_birthday_spacing();
   test_serial_correlation();
+#endif
   imprime_resultado();
   return 0;
 }
