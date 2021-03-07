@@ -650,7 +650,7 @@ bool ret;
 #if defined(__unix__) || defined(__APPLE__)
 ret= pthread_mutex_destroy(&(rng->mutex));
 #elif defined(_WIN32)
-DeleteCriticalSection(rng->mutex);
+DeleteCriticalSection(&(rng->mutex));
 ret= true;
 #endif
 if(free!=NULL)

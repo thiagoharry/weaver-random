@@ -1,4 +1,8 @@
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <sys/time.h>
+#endif
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>

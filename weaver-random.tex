@@ -205,7 +205,7 @@ novas funções.
 
 A primeira função gera e inicializa um gerador retornando um ponteiro
 para ele. Para inicializá-lo, precisamos de uma função de alocação de
-memória passada como primiero argumento (pode ser o \texttt{malloc} da
+memória passada como primiero argumento (pode ser o \monoespaco{malloc} da
 biblioteca padrão ou qualquer outro alocador personalizado). Em
 seguida nossa semente será um valor com um tamanho de um vetor e o
 petor propriamente dito de números de 64 bits que assumimos terem sido
@@ -344,7 +344,7 @@ bool _Wdestroy_rng(void (*free)(void *), struct _Wrng *rng){
 #if defined(__unix__) || defined(__APPLE__)
   ret = pthread_mutex_destroy(&(rng -> mutex));
 #elif defined(_WIN32)
-  DeleteCriticalSection(rng -> mutex);
+  DeleteCriticalSection(&(rng -> mutex));
   ret = true; // Sempre é bem-sucedida segundo a documentação
 #endif
   if(free != NULL)
@@ -359,12 +359,12 @@ bool _Wdestroy_rng(void (*free)(void *), struct _Wrng *rng){
 \subsecao{2.1. Gerador Linear Congruente (LGC)}
 
 Um Gerador Linear Congruente (também chamado pela sigla inglesa
-de \italico{Livear Congruent Generator}) é simplesmente um gerador de
+de \italico{Linear Congruent Generator}) é simplesmente um gerador de
 sequências de valores aleatórias $(x_0, x_1, \ldots)$ tal que para
 determinados valores de $a, c, m$ temos que:
 
 $$
-x_{i+1}=ax_i+c \mod m
+x_{i+1}=ax_i+c mod m
 $$
 
 A qualidade dos geradores varia enormemente de acordo com os
@@ -503,7 +503,7 @@ Cada vez que geramos um novo número, temos que fazer a atualização
 $w_0 \leftarrow w_1$, $w_1 \leftarrow w_2$ e assim por diante (já que
 o gerador usa uma recursão sobre os $n=156$ valores anteriores). Mas
 podemos evitar ter que fazer tantas atribuições ou cópias mantendo
-apenas uma variável (\texttt{offset}) com o índice de qual deverá ser
+apenas uma variável (\monoespaco{offset}) com o índice de qual deverá ser
 o próximo elemento a ser retornado pelo nosso gerador. por meio dele
 saberemos qual a posição do próximo elemento de $(w_0, \ldots,
 w_{156})$ a ser esquecido e substituído por um novo. Sendo assim, o
