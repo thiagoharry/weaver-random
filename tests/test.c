@@ -337,7 +337,7 @@ void test_multithread(void){
   }
   for(i = 0; i < THREAD_NUMBER; i ++){
 #if defined(_WIN32)
-    _WaitForSingleObject(thread[i], INFINITE);
+    WaitForSingleObject(thread[i], INFINITE);
 #else
     pthread_join(thread[i], NULL);  
 #endif
@@ -891,9 +891,23 @@ static uint64_t dummy_sum;
 
 void measure_time(void){
   int i;
-  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed_size, seed);
-  struct timeval _begin, _end;
   dummy_sum = 0;
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed_size, seed);
+#ifdef _WIN32
+  LARGE_INTEGER t1, f, t2, e;
+  QueryPerformanceFrequency(&f);
+  QueryPerformanceCounter(&t1);
+  for(i = 0; i < 100000000; i ++)
+    dummy_sum += _Wrand(my_rng);
+  QueryPerformanceCounter(&t2);
+  e.QuadPart = t2.QuadPart - t1.QuadPart;
+  e.QuadPart *= 1000000;
+  e.QuadPart /= f.QuadPart;
+  elapsed = ((double)e.QuadPart) *1e-6;
+  printf("Generated 100 million of random values in %f seconds (sum: %llu).\n",
+	 elapsed, (unsigned long long) dummy_sum);
+#else
+  struct timeval _begin, _end;
   gettimeofday(&_begin, NULL);
   for(i = 0; i < 100000000; i ++)
     dummy_sum += _Wrand(my_rng);
@@ -901,6 +915,7 @@ void measure_time(void){
   printf("Generated 100 million of random values in %f seconds (sum: %llu).\n",
 	 (1000000 * (_end.tv_sec - _begin.tv_sec) + _end.tv_usec -
 	  _begin.tv_usec) / 1000000.0, (unsigned long long) dummy_sum);
+#endif
 }
 
 void test_serial_correlation(void){
