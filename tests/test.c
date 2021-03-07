@@ -9,12 +9,9 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
-//#include <bsd/stdlib.h>
 #include <stdint.h>
 #include <inttypes.h>
-#if defined(_WIN32)
-#include <windows.h>
-#endif
+
 
 #include "../src/random.h"
 
@@ -395,7 +392,7 @@ void test_serial(void){
   int penalty, fails = 0;
   const int size = 15;
   const int serie = (1 << size);
-  unsigned long measures[serie]; // 2^20 values
+  unsigned long measures[32768]; // (1 << size) = serie = 32768
   const unsigned long long n =  (5 * serie);
   for(total_tests = 0; total_tests < 1000; total_tests ++){
     penalty = 0;
@@ -431,14 +428,14 @@ void test_collector(void){
       // C1: Initialize:
       unsigned long s;
       int r;
-      unsigned long count[t+1];
+      unsigned long count[117]; // t+1 == 117
       for(r = 0; r <= t; r ++)
 	count[r] = 0;
       for(s = 0; s < n; s ++){
 	// C2: Set q=r=0
 	int k, q = 0;
 	int r = 0;
-	int occurs[d];
+	int occurs[16]; // d==16
 	for(k = 0; k < d; k ++)
 	  occurs[k] = 0;
 	while(q < d){
@@ -592,7 +589,7 @@ void test_gap(void){
       // G1: 
       const unsigned t = 20;
       unsigned long count[t + 1], inv[t + 1], s = 0, r, n = ((1 << t) * 5);
-      double prob[t+1];
+      double prob[21]; //t+1==21
       for(i = 0; i <= t; i ++){
 	count[i] = 0;
 	inv[i] = (i<t)?(2 * (1 << i)):(1 << i);
@@ -661,12 +658,12 @@ void test_permutation(void){
     penalty = 0;
     for(three_tests = 0; three_tests < 3; three_tests ++){
       unsigned long long n_tests;
-      unsigned long count[n/5]; //8! possible values
+      unsigned long count[40320]; //8! possible values
        for(i = 0; i < n/5; i ++)
 	 count[i] = 0;
        for(n_tests = 0; n_tests < n; n_tests ++){
 	 // Generating the list
-	 int U[1 << BITS_TESTED]; // 8 values to be generated
+	 int U[8]; // 8 values to be generated
 	 int gen = 0, control = 0; // Control: bit mask with already generated
 	 while(control != 0xff){ // While not all generated
 	   U[gen] = read_random_bits(my_rng, BITS_TESTED); // Generate 1
@@ -711,7 +708,7 @@ void test_runs_up(void){
     penalty = 0;
     for(three_tests = 0; three_tests < 3; three_tests ++){
       int generated = 0, values[n], count[6];
-      bool chosen[n]; // Generating permutation of 4096 elements
+      bool chosen[4096]; // Generating permutation of 4096 elements
       for(i = 0; i < n; i ++) chosen[i] = 0;
       for(i = 0; i < 6; i ++) count[i] = 0;
       while(generated < n){
@@ -764,8 +761,8 @@ void test_maximum_of_t(void){
   const int BITS = 6;
   const int n = 1310720; // Deve ser 5*2^(BITS * t)
   const int indices = 64; // Deve ser 2^BITS
-  unsigned long count[indices];
-  double prob[indices];
+  unsigned long count[64]; //indices
+  double prob[64]; // indices
   for(i = 0; i < indices; i ++)
     prob[i] = ((double) (t * (i * i + i) + 1)) / (1 << (BITS * t));
   for(total_tests = 0; total_tests < 1000; total_tests ++){
@@ -804,7 +801,7 @@ void test_collision(void){
   for(total_tests = 0; total_tests < 1000; total_tests ++){
     penalty = 0;
     for(three_tests = 0; three_tests < 3; three_tests ++){
-      int d[m];
+      int d[1048576]; //m==1048576
       int collisions = 0;
       for(i = 0; i < m; i ++)
 	d[i] = 0;
@@ -839,7 +836,7 @@ void test_birthday_spacing(void){
   for(total_tests = 0; total_tests < 1000; total_tests ++){
     penalty = 0;
     for(three_tests = 0; three_tests < 3; three_tests ++){
-      unsigned long birthday[n], spacing[n], equal_spacing[4];
+      unsigned long birthday[512], spacing[512], equal_spacing[4];
       for(i = 0; i < 4; i ++)
 	equal_spacing[i] = 0;
       for(spacing_test = 0; spacing_test < 1000; spacing_test ++){
@@ -918,7 +915,7 @@ void test_serial_correlation(void){
   for(shift = 1; shift < (N/2); shift ++){
     int fails = 0;
     for(total_tests = 0; total_tests < 1000; total_tests ++){
-      double values[N];
+      double values[1000];
       //double a = 0.0, b = 0.0, c = 0.0, result;
       double uv = 0.0, u = 0.0, v = 0.0, u2 = 0.0, v2 = 0.0, result;
       for(i = 0; i < N; i ++)
