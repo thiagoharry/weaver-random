@@ -895,6 +895,7 @@ void measure_time(void){
   struct _Wrng *my_rng = _Wcreate_rng(malloc, seed_size, seed);
 #ifdef _WIN32
   LARGE_INTEGER t1, f, t2, e;
+  double elapsed;
   QueryPerformanceFrequency(&f);
   QueryPerformanceCounter(&t1);
   for(i = 0; i < 100000000; i ++)
