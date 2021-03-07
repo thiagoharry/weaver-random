@@ -302,7 +302,7 @@ void test_pcg(void){
 #if !defined(__EMSCRIPTEN__)
 #define THREAD_NUMBER 1000
 #if defined(_WIN32)
-DWORD _WINAPI thread_function(void *my_rng)
+DWORD WINAPI thread_function(void *my_rng)
 #else
 void *thread_function(void *my_rng)
 #endif
@@ -588,7 +588,7 @@ void test_gap(void){
     for(three_tests = 0; three_tests < 3; three_tests ++){
       // G1: 
       const unsigned t = 20;
-      unsigned long count[t + 1], inv[t + 1], s = 0, r, n = ((1 << t) * 5);
+      unsigned long count[21], inv[21], s = 0, r, n = ((1 << t) * 5);
       double prob[21]; //t+1==21
       for(i = 0; i <= t; i ++){
 	count[i] = 0;
@@ -707,7 +707,7 @@ void test_runs_up(void){
   for(all_tests = 0; all_tests < 1000; all_tests ++){
     penalty = 0;
     for(three_tests = 0; three_tests < 3; three_tests ++){
-      int generated = 0, values[n], count[6];
+      int generated = 0, values[4096], count[6];
       bool chosen[4096]; // Generating permutation of 4096 elements
       for(i = 0; i < n; i ++) chosen[i] = 0;
       for(i = 0; i < 6; i ++) count[i] = 0;
