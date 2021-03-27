@@ -25,7 +25,7 @@ size_t seed_size = sizeof(seed) / 8;
 
 #ifdef W_RNG_MERSENNE_TWISTER
 #include "sfmt.c"
-#elif defined(W_RNG_XORSHIRO)
+#elif defined(W_RNG_XOSHIRO)
 #include "xorshiro.c"
 #elif defined(W_RNG_PCG)
 #include "pcg.c"
@@ -224,7 +224,7 @@ void test_mersenne_twister(void){
   {
     unsigned char *p1 = (unsigned char *) &(ref_rng.state),
       *p2 = (unsigned char *) my_rng -> w;
-    for(i = 0; i < _W * _N / 8; i ++){
+    for(i = 0; i < 128 * 156 / 8; i ++){
       if(*p1 != *p2){
 	equal = false;
 	//break;
@@ -250,7 +250,7 @@ void test_mersenne_twister(void){
 }
 #endif
 
-#if defined(W_RNG_XORSHIRO)
+#if defined(W_RNG_XOSHIRO)
 void test_xorshiro(void){
   bool equal = true;
   int i;
@@ -960,12 +960,14 @@ int main(int argc, char **argv){
   printf("Starting LCG tests.\n\n");
 #elif defined(W_RNG_MERSENNE_TWISTER)
   printf("Starting MERSENNE TWISTER tests.\n\n");
-#elif defined(W_RNG_XORSHIRO)
-  printf("Starting XORSHIRO** tests.\n\n");
+#elif defined(W_RNG_XOSHIRO)
+  printf("Starting XOSHIRO** tests.\n\n");
 #elif defined(W_RNG_PCG)
   printf("Starting PCG tests...\n\n");
 #elif defined(W_RNG_CHACHA20)
   printf("Starting ChaCha20 RNG tests.\n\n");
+#elif defined(W_RNG_SPLITMIX)
+  printf("Starting SplitMix64 RNG tests.\n\n");
 #endif
   printf("Recommended size for seed vector: (%d-%d)\n",
 	 _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE,
@@ -973,7 +975,7 @@ int main(int argc, char **argv){
   measure_time();
 #if defined(W_RNG_MERSENNE_TWISTER)
   test_mersenne_twister();
-#elif defined(W_RNG_XORSHIRO)
+#elif defined(W_RNG_XOSHIRO)
   test_xorshiro();
 #elif defined(W_RNG_PCG)
   test_pcg();

@@ -13,11 +13,13 @@ test: tests/test.c src/random.c
 	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_XORSHIRO -pthread tests/test.c src/random.c -o test_xorshiro -lm
 	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_LCG -pthread tests/test.c src/random.c -o test_lcg -lm
 	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_CHACHA20 -pthread tests/test.c src/random.c -o test_chacha -lm
+	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_SPLITMIX -pthread tests/test.c src/random.c -o test_splitmix -lm
 	./test_chacha
 	./test_sfmt
 	./test_xorshiro
 	./test_pcg
 	./test_lcg
+	./test_spitmix
 wasm:
 	emcc $(CFLAGS) -Wall -O2 -DW_RNG_PCG tests/test.c src/random.c -o docs/pcg.html -lm
 	emcc $(CFLAGS) -Wall -O2 -DW_RNG_LCG tests/test.c src/random.c -o docs/lcg.html -lm

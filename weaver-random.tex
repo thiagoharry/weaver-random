@@ -46,22 +46,26 @@
 \email{thiago@@bitbitbit.com.br}
 \vskip6pt
 
-\abstract{This article is an informal analysis of some random
-number generators. It contains implementation of several random number
-generator algorithms and is intended to be used with Weaver game
-engine, but can also be used standalone in other projects. All
-different algorithms are encapsulated in the same API, therefore using
-the API you can change easily the algorithm using macro definitions.}
+\abstract{This article contains the implementation of several random number
+generator algorithms in literary programming and is intended to be
+used with Weaver Game Engine. However, it can also be used as an
+independent API in other projects. All different algorithms are
+encapsulated in the same API letting programmers to easily change the
+algorithm using macro definitions. We also describe here how the
+algorithms perform in some statistical tests and in benchmarks running
+in Linux, OpenBSD, Windows and Web Assembly.}
 
 \vskip 0.5cm plus 3pt minus 3pt
 
-\resumo{Este artigo é uma análise informal sobre geradores de números
-aleatórios. Ele contém a implementação de vários algoritmos diferentes
-de geração de números pseudo-randômicos e é feito para ser usado com o
-motor de jogos Weaver, mas também pode ser usado sozinho junto com
-outros projetos. Todos os diferentes algoritmos são encapsulados na
-mesma API, então usando esta API, é possível mudar facilmente o
-algoritmo usando definição de macros.}
+\resumo{Este artigo contém a implementação de vários algoritmos geradores
+de números pseudo-randômicos em programação literária e ele foi feito
+para ser usado junto com o Motor de Jogos Weaver. Contudo, ele também
+pode ser usado como uma API independente em outros projetos. Todos os
+diferentes algoritmos são encapsulados usando a mesma API de modo que
+é possível mudar o algoritmo usado apenas por meio de definição de
+macros. Também descrevemos aqui como os algoritmos se saem diante de
+diferentes testes estatísticos e em medidores de desempenho rodando em
+Linux, OpenBSD, Windows e Web Assembly.}
 
 \secao{1. Introdução}
 
@@ -70,79 +74,71 @@ algoritmo usando definição de macros.}
 Um gerador de números aleatórios é útil para os seguintes cenários em
 um jogo eletrônico:
 
-a) Simular Fenômenos: Isso se aplica tanto a fenômenos naturais que
-podem ser aleatórios como a fenômonos sociais, por exemplo. Isso é
-usado exaustivamente em jogos que são simuladores, como simuladores de
+a) Simulação: Isso se aplica tanto à simulação de fenômenos naturais
+que podem ser aleatórios ou mesmo fenômonos sociais. Isso é usado
+exaustivamente em jogos que são simuladores, como simuladores de
 cidades como SimCity. Mas pode ser usado para simular variações no
-clima ou direção do vento em quase qualquer tipo de jogo.
+clima, direção do vento ou no humor de personagens em quase qualquer
+tipo de jogo.
 
 b) Amostragem: Podem existir muitos tipos diferentes de oponentes que
 podem ser gerados. Gerando as características variáveis aleatoriaente
-estamos simulando a amostragem de um deles dentre os vários outros
-possíveis. Por exemplo, em um jogo de Pokémon, determinada espécie de
-criatura pode possuir muitas variações diferentes como atributos que
-dependem de sua genética ou em que tipos de golpes ela pode
-realizar. Ao gerar uma criatura aleatória, obtemos uma amostragem de
-uma dentre várias outras. Há o caso de simulações de mundos inteiros
+estamos de fato fazendo uma amostragem de um tipo de personagem
+específico dentre o conjunto de todos os possíveis. Por exemplo, em um
+jogo de Pokémon, determinada espécie de criatura pode possuir muitas
+variações diferentes de atributos possíveis a depender de sua genética
+e os tipos de ataques que ela tem também podem mudar. Gerando uma
+criatura aleatória, obtemos uma amostragem de um indivíduo dentre
+vários outros possíveis. Há o caso de simulações de mundos inteiros
 gerados de maneira procedural.
 
-c) Programação: Durante o desenvolvimento de certos tipos de jogos,
-pode-se qurer testar seu funcionamento fazendo-o rodar substituindo as
-opções do jogador por alguma IA que realiza suas escolhas de maneira
-não-probabilística. Ou então, para se gerar níveis aleatórios de um
-jogo para fins de experimentos.
+c) Programação: Durante o desenvolvimento do jogo, o programador
+poderia usar o gerador para simular escolhas aleatórias que um jogador
+poderia fazer para ver se alguma das combinações causa problemas ou
+falhas. Ou gerar fases aleatórias somente para checar se algum bug
+envolvendo o motor do jogo pode ser encontrado.
 
-d) Tomada de decisão: Em um RPG, por exemplo, um personagem poderia
-conversar com algum tipo de personagem conselheiro, que diante de uma
-questão, poderia responder aleatoriamente para o jogador qual ele acha
-que é a melhor ação a ser tomada.
-
-e) Estética: Adicionar aleatoriamente pequenas aleatoriedades em
+d) Estética: Adicionar aleatoriamente pequenas aleatoriedades em
 padrões de imagens que de outra forma seriam regulares pode aumentar o
 apelo estético de uma imagem. A aleatoriedade pode tornar também
 efeitos de transição de telas mais interessantes.
 
-f) Recreação: Um jogo eletrônico em princípio é inteiramente sobre
-recreação. Mas é possível simular dentro deles jogos recreativos mais
-clássicos que dependem da sorte como dados, roletas, baralhos.
+e) Entretenimento: A diversão de um jogo pode estar inteiramente na
+aleatoriedade. Este é o caso de jogos envolvendo dados, roletas,
+embaralhamento de cartas.
 
-Esta lista foi adaptada da apresentada em [Knuth 1998]. Todos os
-exemplos apresentados nela foram adaptados acima para o cenário de
-jogos eletrônicos, exceto um (análise numérica).
+Com tantos casos de uso diferentes para geradores de números
+aleatórios em jogos eletrônicos, o gerador ideal deve ser um projetado
+para propósito geral. Nunca um que apresenta um bom desempenho em só
+alguns dos casos de uso acima.
 
-Como há tantos casos de uso diferentes para geradores de números
-aleatórios em jogos eletrônicos, o gerador ideal usado neles deve ser
-um projetado para casos bastante gerais. Um motor para criação de
-jogos eletrônicos não deve fornecer um gerador otimizado para uma das
-tarefas, mas que seja ruim nas demais.
+Geralmente há uma tolerância maior para quando um gerador de números
+aleatórios gera resultados previsíveis em um jogo.  Muitos jogos
+antigos usavam geradores que consistiam apenas em uma sequência de
+números fixos, e mesmo assim o viés do gerador não era aparente. Mas
+existem casos em que as consequências de um gerador ruim são bastante
+severas. Por exemplo, um simulador que se propõe a ser realista pode
+falhar em treinar alguém para uma atividade real. Um gerador ruim pode
+ser explorado em jogos envolvendo apostas ou competições sérias.
 
-Apesar disso, geralmente há uma tolerância maior para quando um
-gerador de números aleatórios gera resultados não tão aleatórios em um
-jogo eletrônico. As consequências são muito menos desagradáveis do que
-quando isso ocorre em aplicações criptográficas, por exemplo. Muitos
-jogos antigos usavam geradores que consistiam apenas em uma sequência
-de números fixos. E o viés de seus geradores não era necessariamente
-aparente. Por outro lado, há ocasiões nas quais um gerador ruim pode
-ter consequências desagradáveis. Por exemplo, em simuladores que
-almejam realismo, em jogos envolvendo apostas ou competições sérias,
-ou naqueles em que certas ocorrências aleatórias devam ser raras e o
-desenvolvedor não deseja que o gerador seja manipulado para aumentar
-as chances de um jogador. Levando isso em conta, o padrão de um
-gerador de números aleatórios de um jogo deve ser alto e deve-se
-esperar que ele passe em testes estatísticos.
+Nosso objetivo aqui será definir uma API para um gerador de números
+aleatórios e programar diferentes opções de algoritmos para
+instanciá-la. Um usuário poderá escolher qual algoritmo será usado,
+mas se nenhuma escolha será feita, a biblioteca que será definida fará
+sua própria escolha sobre o algoritmo.
 
 \subsecao{1.2. Programação Literária e Notação Usada no Artigo}
 
 Este artigo utiliza a técnica de ``Programação Literária'' para
-desenvolver o seu gerador de números aleatórios. Esta técnica foi apresentada
-em [Knuth, 1984] e consiste e uma filosofia de desenvolvimento de
-\italico{software} na qual um programador desenvolve um programa escrevendo
-e explicando didaticamente o código necessário, se preocupando em
-deixar o seu funcionamento claro para as pessoas que lerem a
-explicação. Ferramentas automáticas são então utilizadas para extrair
-o código existente na expicação, mudar a ordem do código conforme for
-mais adequado para o compilador e produzir à partir do código extraído
-um programa executável.
+desenvolver a API de gerador de números aleatórios. Esta técnica foi
+apresentada em [Knuth, 1984] e tem por objetivo desenvolver
+\italico{softwares} de tal forma que um programa de computador a ser compilado
+é exatamente igual a um documento escrito para pessoas detalhando e
+explicando o código. O presente documento não é algo independente do
+código, mas sim consiste no próprio código-fonte do projeto.
+Ferramentas automáticas são utilizadas para extrair o código deste
+documento, colocá-lo na ordem correta e produzir o código que é
+passado para o compilador.
 
 Por exemplo, neste artigo serão definidos dois arquivos
 diferentes: \monoespaco{random.c} e \monoespaco{random.h}, os quais
@@ -163,7 +159,6 @@ extern "C" {
 #include <pthread.h>
 #endif
 @<Escolhe Algoritmo Padrão do RNG@>
-@<Constantes RNG@>
 @<Estrutura RNG@>
 @<Declarações de Gerador Aleatório@>
 #ifdef __cplusplus
@@ -173,32 +168,26 @@ extern "C" {
 @
 \fimcodigo
 
-As duas primeiras linhas assim como a última são macros de segurança
-que impedem que as funções e variáveis declaradas ali sejam declaradas
-redundantemente se alguém incluir mais de uma vez o arquivo em um
-código-fonte. As demais linhas contém macros que checam se estamos
-compilando usando C++ ao invés de C. Se for o caso, nós declaramos
-todas as funções que existem neste arquivo como funções do tipo C,
-para que o compilador C++ saiba que elas não serão modificadas por
-meio de sobrecarga de operadores e que por isso não é necessário
-armazenar informações adicionais além do nome da função para
-reconhecê-la.
+As duas primeiras linhas assim como a última são macros que impedem
+que garantem que as funções e variáveis declaradas ali serão inseridas
+no máximo uma só vez em cada unidade de compilação. Também colocamos
+macros para checar se estamos compilando o código como C ou C++. Se
+estivermos em C++, avisamos o compilador que estamos definindo tudo
+como código C e garantimos que não vamos modificar nada usando
+sobrecarga de operadores. O código poderá ser armazenado de maneira
+mais compacta.
 
-No meio do código acima, deixamos indicado em letras vermelhas que
-iremos adicionais mais tarde ali um novo trecho de código chamado
-``Declarações de Gerador Aleatório'', com a declaração das funções que
-iremos usar. Folheando o artigo, você encontrará nas páginas seguintes
-um outro trecho de código cujo título não será \monoespaco{random.h},
-mas sim ``Declarações de Gerador Aleatório''. Será ali que o código que
-vai nesta parte do arquivo será encontrado. Pdem existir mais de um
-trecho de código com este título. Isso significa que para produzir o
-código funcional utilizado pelo compilador, devemos concatenar todos
-estes trechos com o mesmo título e colocar na parte indicada deste
-arquivo. Isso nos permite colocar a declaração de funções à medida que
-formos explicando elas no código, sem precisar declarar todas de uma
-vez só porque elas pertencem a um mesmo trecho de código.
+A parte vermelha no código acima mostra que código será inserido ali
+no futuro. Em ``Declarações de Gerador Aleatório'', por exemplo, nós
+colocaremos declarações das funções.
 
-\subsecao{1.4. Funções de API a serem Definidas}
+Cada trecho de código tem um título, que no caso acima
+é \monoespaco{random.h}. O título indica onde o código será
+inserido. No caso acima, o código irá para um arquivo. Em trechos de
+código futuros, haverá um com o título ``Declarações de Gerador
+Aleatório'' com o código que irá nesta parte vermelha indicada.
+
+\subsecao{1.3. Funções de API a serem Definidas}
 
 Nosso gerador de números aleatórios deverá fornecer um total de 3
 novas funções.
@@ -215,10 +204,12 @@ Dessa forma, nossa função de inicialização é suficientemente genérica
 para que o usuário possa fornecer um número personalizado de entropia
 ao gerador. Caso ele seja usado em um jogo que simula o embaralhamento
 de 54 cartas, por exemplo, o ideal é que ele passe um número de bits
-aleatório $n$ tal que $2^n$ não seja muito menor que $54!$, por
-exemplo. Por outro lado, em algumas máquinas ou ambientes pode ser
-difícil conseguir uma quantidade muito grande de bits aleatórios para
-inicialização. Então, a API permite que um número menor seja passado.
+aleatório $n$ tal que $2^n$ não seja muito menor que $54!$. Do
+contrário, não seremos capazes de simular a maioria dos
+embaralhamentos possíveis. Por outro lado, em algumas máquinas ou
+ambientes pode ser difícil conseguir uma quantidade muito grande de
+bits aleatórios para inicialização. Então, a API permite que um número
+menor seja passado.
 
 \iniciocodigo
 @<Declarações de Gerador Aleatório@>=
@@ -262,12 +253,12 @@ bool _Wdestroy_rng(void (*free)(void *), struct _Wrng *);
 @
 \fimcodigo
 
-\subsecao{1.5. Suporte à Threads}
+\subsecao{1.4. Suporte à Threads}
 
 O código adicionado aqui servirá para garantir que mais de uma thread
 possa usar o gerador de números randômicos sem problemas após a sua
 inicialização. Para isso precisamos de um cabeçalho adequado para
-declarar os tipos que iremos usar:
+declarar os tipos que iremos usar nos ambientes em que for suportado:
 
 \iniciocodigo
 @<Incluir Cabeçalhos Necessários@>+=
@@ -280,7 +271,7 @@ declarar os tipos que iremos usar:
 @
 \fimcodigo
 
-Tudo o que serápreciso fazer é, para cada gerador, definir um mutex a
+Tudo o que será preciso fazer é, para cada gerador, definir um mutex a
 ser colocado dentro do gerador (dentro do \monoespaco{struct \_Wrng}):
 
 \iniciocodigo
@@ -334,8 +325,11 @@ LeaveCriticalSection(&(rng -> mutex));
 @
 \fimcodigo
 
-Só com isso podemos definir a função que desaloca nossos geradores,
-que será a mesma independente do algoritmo utilizado:
+O principal motivo de precisarmos de uma função para finalizar nosso
+gerador, a função \monoespaco{\_Wdestroy\_rng}, é que precisaremos
+finalizar o uso do mutex, além de desalocar o gerador se
+necessário. Como é só isso, podemos já declarar esta função nesta
+parte, pois já temos o necessário para defini-la:
 
 \iniciocodigo
 @<Definição de \_Wdestroy\_rng@>=
@@ -360,11 +354,11 @@ bool _Wdestroy_rng(void (*free)(void *), struct _Wrng *rng){
 
 Um Gerador Linear Congruente (também chamado pela sigla inglesa
 de \italico{Linear Congruent Generator}) é simplesmente um gerador de
-sequências de valores aleatórias $(x_0, x_1, \ldots)$ tal que para
-determinados valores de $a, c, m$ temos que:
+sequências de valores aleatórias $(x_0, x_1, \ldots)$ definido com
+ajuda de constantes inteiras $a$, $c$ e $m$ tal que:
 
 $$
-x_{i+1}=ax_i+c mod m
+x_{i+1}=ax_i+c\; (mod\; m)
 $$
 
 A qualidade dos geradores varia enormemente de acordo com os
@@ -384,7 +378,7 @@ qualidade se $c$ for algum valor ímpar. J'o valor inicial, também deve
 ser sempre um número ímpar, mas sem outros requisitos.
 
 Sendo assim, podemos usar os primeiros 64 bits da semente para
-inicizlizar $x_0$, apenas forçando o bit menos significativo a ser
+inicializar $x_0$, apenas forçando o bit menos significativo a ser
 1. Se existir mais um valor de 64 bits na semente, usamos ele como
 nossa constante $c$, apenas ajustando o bit menos significativo para
 um. Do contrário apenas usamos $c=1$.
@@ -423,7 +417,7 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
                            uint64_t *seed){
   struct _Wrng *rng = (struct _Wrng *) allocator(sizeof(struct _Wrng));
   if(rng != NULL){
-    // If have a seed, use it, otherwise pick this constant chosen at random:
+    // Se não temos semente nenhuma, usamos uma constante aleatória como semente:
     rng -> last_value = ((size > 0)?(seed[0]):(0x1c3b9d10b1d41adc));
     rng -> c = ((size > 1)?(seed[1]):(1));
     rng -> last_value |= (1u);
@@ -467,55 +461,51 @@ primos de Mersenne ($2^n-1$ para algum $n$ inteiro positivo). As
 implementações mais usadas deste algoritmo suportam períodos de
 $2^{19937}-1$ sem que haja repetição. O que geralmente é mais que
 suficiente (ou mesmo um exagero) para qualquer caso de uso. Já o
-``SIMD'' é um conjunto de instruções para valores de 128 bits que CPUs
-mais recentes suportam. Tais instruções, se suportadas, são usadas
-para tornar o desempenho mais rápido.
+``SIMD'' é um conjunto de instruções para valores vetorizados de 128
+bits que CPUs mais recentes suportam. Tais instruções, se suportadas,
+são usadas para tornar o desempenho mais rápido quando o compilador é
+esperto o bastante para usá-las ou se a usamos explicitamente com
+assembly.
 
 O SFMT funciona por meio da seguinte recursão onde cada valor $X_i$
-tem $w$ bits (no nosso caso $w=128$):
+tem 128 bits:
 
 $$
 X_{i+n}=g(X_i, \ldots, X_{i+n-1})
 $$
 
+No caso, o gerador usa como $n$ o número 156. O que significa que nós
+sempre precisamos memorizar os últimos 156 valores da sequência (cada
+um com 128 bits). Isso explica porque este gerador precisa de uma
+quantidade tão maior de memória quando comparado a outros.
+
 A função $g$ funciona concatenando toda a sua entrada na forma de um
-vetor binário em $F_2$ com $wn$ elementos e multiplicando por
-uma matriz $A\in F_2^{wn\times w}$. Na prática essa matriz é
-escolhida de modo a ser simples e assim não precisar ser representada
-ou armazenada. Ao invés disso ela simplesmente existirá na forma de
-rotações de bits, operações AND e operações de XOR (os quais
-correspondem à multiplicação e adição no corpo $F_2$).
+vetor binário com $156 \times 128$ elementos. Então, ela multiplica
+uma matriz binária por este vetor binário. A matriz binária tem
+$156 \times 128$ colunas e 128 linhas. Exceto que ao invés de
+trabalharmos usando o corpo convencional de números racionais ou
+reais, nós trabalhamos no corpo finito GF(2) composto somente pelos
+números 0 e 1 (o vetor e a matriz são binários). Isso significa que o
+que entendemos por ``multiplicação'' aqui é um AND lógico e a adição é
+um XOR lógico. E também escolhemos uma matriz conveniente para que não
+seja necessário representar ela explicitamente. Poderemos representar
+a multiplicação da matriz por um vetor por meio de um número compacto
+de operações.
 
-Essa descrição genérica descreve toda a família de geradores Mersenne
-Twister. Para o caso específico do SFMT, os valores que escolheremos
-para nossas constantes será:
-
-\iniciocodigo
-@<Constantes RNG@>=
-#ifdef W_RNG_MERSENNE_TWISTER
-#define _W 128 // Tamanho de cada X_i gerado
-#define _N 156 // Tamanho da recursão
-#endif
-@
-\fimcodigo
-
-Cada vez que geramos um novo número, temos que fazer a atualização
-$w_0 \leftarrow w_1$, $w_1 \leftarrow w_2$ e assim por diante (já que
-o gerador usa uma recursão sobre os $n=156$ valores anteriores). Mas
-podemos evitar ter que fazer tantas atribuições ou cópias mantendo
-apenas uma variável (\monoespaco{offset}) com o índice de qual deverá ser
-o próximo elemento a ser retornado pelo nosso gerador. por meio dele
-saberemos qual a posição do próximo elemento de $(w_0, \ldots,
-w_{156})$ a ser esquecido e substituído por um novo. Sendo assim, o
-formato de nossa estrutura de RNG será:
+Na estrutura de nosso gerador, precisamos armazenar todos os valores
+anteriores necessários e também um \italico{offset} que armazena a
+posição do próximo valor de 64 bits a ser retornado. Se este for um
+valor par, assumimos que temos que gerar um novo valor de 128 bits e
+retornar seus primeiros 64 bits. Se for um valor ímpar, não
+precisaremos gerar um novo valor, apenas retornaremos os 64 bits
+restantes do último valor.
 
 \iniciocodigo
 @<Estrutura RNG@>=
 #ifdef W_RNG_MERSENNE_TWISTER
 struct _Wrng{
-  char w[_W * _N / 8]; // Todos N valores gerados, cada um com _W bits
-  int offset;          // Index for the next 64-bit value to be returned
-                       // If even, we need to generate next 128 bits
+  char w[128 * 156 / 8]; // Todos N valores gerados, cada um com _W bits
+  int offset;          // Índice para o próximo valor retornado
   @<Declaração de Mutex@>
 };
 #endif
@@ -537,7 +527,7 @@ int i, index = rng -> offset / 2;
 result = ((unsigned __int128 *) (rng -> w))[index];
 result = result << 8;
 result = result ^ ((unsigned __int128 *) (rng -> w))[index];
-i = (index + 122) % _N;
+i = (index + 122) % 156;
 aux[0] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 0);
 aux[1] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 1);
 aux[2] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 2);
@@ -548,9 +538,9 @@ aux[2] = (aux[2] >> 11) & 0xBFFAFFFF; // 0xDDFECB7F
 aux[3] = (aux[3] >> 11) & 0xBFFFFFF6; // 0xDFFFFFEF
 memcpy(&tmp, aux, 16);
 result = result ^ tmp;
-i = (index + _N - 2) % _N;
+i = (index + 156 - 2) % 156;
 result = result ^ (((unsigned __int128 *) (rng -> w))[i] >> 8);
-i = (index + _N - 1) % _N;
+i = (index + 156 - 1) % 156;
 aux[0] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 0);
 aux[1] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 1);
 aux[2] = *(((uint32_t *) &(((unsigned __int128 *) (rng -> w))[i])) + 2);
@@ -568,13 +558,17 @@ result = result ^ tmp;
 @
 \fimcodigo
 
-O código acima é o que representa a multiplicação de matriz por vetor
-que gera o próximo elemento. Essa geração do próximo valor
-pseudo-randômico $w_i$ à partir de $w_{i-1}$, $w_{i-2}$, $w_{i-N}$ e
-$w_{i-34}$ precisa ser então integrada à função que efetivamente
-retorna o próximo número. Como nós só retornamos valores de 64 bits,
-cada novo valor de 128 bits rende dois próximos valores a serem
-retornados:
+Note que se estivermos em um compilador que não suporta variáveis de
+tamanho fixo com 128 bits, nós simplesmente retornamos um erro e não
+compilaremos.
+
+O código acima representa a multiplicação de uma matriz por um
+vetor. Note que a matriz usada é bastante esparsa. Se nós queremos
+computar o valor $x_i$, nós o obtemos consultando apenas os valores
+anteriores $x_{i-1}$, $x_{i-2}$, $x_{i-156}$ e $x_{i-34}$.
+
+Se sabemos como computar o próxim elemento $x_i$, o código da função
+que nos dá o próximo valor de 64 bits será:
 
 \iniciocodigo
 @<Definição de \_Wrand@>=
@@ -586,7 +580,7 @@ uint64_t _Wrand(struct _Wrng *rng){
     @<SFMT: Computa próximo elemento@>
   }
   ret = ((uint64_t *) (rng -> w))[rng -> offset];
-  rng -> offset = (rng -> offset + 1) % (_W * _N / 64);
+  rng -> offset = (rng -> offset + 1) % (128 * 156 / 64);
   @<Mutex:SIGNAL@>
   return ret;
 }
@@ -594,11 +588,12 @@ uint64_t _Wrand(struct _Wrng *rng){
 @
 \fimcodigo
 
-Inicializar o nosso gerador é então ler o que existir na nossa semente
-e preencher valores iniciais do vetor de estado aplicando um
-mini-gerador pseudo-randômico sobre a semente. O método que usaremos é
-o mesmo utilizado na implementação de referência do SFMT. Os primeiro
-componente deste mini-gerador são as seguintes funções:
+Para inicializar o nosso gerador, precisamos preencher nosso histórico
+de v156 valores anteriores com ajuda de nossa semente. Como a semente
+provavelmente será menor do que isso, aplicamos a ela um mini-gerador
+de números pseudo-randômicos só para esticar a aleatoriedade inicial e
+preencher os valores. Os primeiros dois componentes de nosso
+mini-gerador são:
 
 \iniciocodigo
 @<Definição de \_Wcreate\_rng@>=
@@ -609,18 +604,14 @@ static uint32_t f1(uint32_t x){
 static uint32_t f2(uint32_t x){
   return (x ^ (x >> 27)) * (uint32_t) 1566083941UL;
 }
-
 #endif
 @
 \fimcodigo
 
-A função é aplicada então na nossa inicialização abaixo. Usamos os
-mesmos algoritmos utilizados para inicializar o algoritmo em sua
-implementação de referência quando a semente é um vetor. Como a
-especificação lida com vetores de 32 bits e aplica os algoritmos os
-tratando assim, dentro da função de inicialização tratamos tais
-elementos como tendo 32 bits, traduzindo assim o tamanho dos vetores
-conforme apropriado:
+Como inicializaremos nossa estrutura é definido pela implementação de
+referência do algoritmo. Assim, tal como na referência, usamos um
+mini-gerador baseado em números de 32 bits para preencher o estado
+inicial:
 
 \iniciocodigo
 @<Definição de \_Wcreate\_rng@>=
@@ -630,10 +621,10 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
   struct _Wrng *rng = (struct _Wrng *) allocator(sizeof(struct _Wrng));
   if(rng != NULL){
     uint32_t *dst = (uint32_t *) (rng -> w), *origin = (uint32_t *) seed;
-    size_t size_dst = _W * _N / 32, size_origin = size * 2;
+    size_t size_dst = 128 * 156 / 32, size_origin = size * 2;
     int count, r, i, j, mid = 306, lag = 11;
     // Preenchemos inicialmente tudo com 0x8b:
-    memset(rng -> w, 0x8b, _W * _N / 8);
+    memset(rng -> w, 0x8b, 128 * 156 / 8);
     count = ((size_origin + 1 >= size_dst)?(size_origin + 1):(size_dst));
     r = f1(dst[0] ^ dst[mid] ^ dst[size_dst - 1]);
     dst[mid] += r;
@@ -700,13 +691,13 @@ valores gerados:
 @
 \fimcodigo
 
-Por fi, temos que indicar qual o tamanho recomendado para a semente do
-SFMT. O algoritmo não espcifica um limite muito rigoroso, mas sabemos
-qu informar um número maior de bits de semente que o vetor de estado é
-inútil. Desta forma, o valor mínimo pedido será 1 elemento e o máximo
-será o número de elementos que preenche o vetor. Para os parâmetros
-que usamos, o vetor tem 19968 bits, o que daria 312 elementos de 64
-bits para preenchê-lo:
+Por fim, temos que documentar o tamanho recomendado para a semente do
+algoritmo. Podemos usar sem problemas uma semente com um único valor
+de 64 bits, já que a implementação de referência chega a suportar
+sementes com apenas 32 bits. Se passarmos sementes maiores, elas serão
+usadas para ajudar a preencher o estado inicial. Contudo, como o
+estado inicial é um vetor de 19968 bits, fornecer mais de 312 valores
+com 64 bits seria redundante:
 
 \iniciocodigo
 @<Avisa Tamanho Ideal da Semente@>=
@@ -717,45 +708,111 @@ bits para preenchê-lo:
 @
 \fimcodigo
 
-\subsecao{2.3. Xorshiro256**}
+\subsecao{2.3. SplitMix64}
 
-Este é um gerador mais recente que o SFMT e tem como objetivo manter a
-mesma qualidade, fazê-lo passar em testes estatísticos adicionais, ser
-rápido e não precisar de um estado tão grande assim. O Xorshiro é um
-gerador linear, mas que combina sua operação linear com operações
-não-lineares adicionais para que sua linearidade não o penalize em
-testes estatísticos.
+O SplitMix é um gerador de números aleatórios projetado para ser
+possível de ser dividido. Isso significa que existe um algoritmo tal
+que dada a estrutura do gerador, retorna uma nova estrutura tal que
+agora ambas podem gerar números pseudo-randômicos sem correlação entre
+si e sem a necessidade de fornecer novas sementes.
 
-Basicamente ele precisa armazenar apenas os últimos 4 valores gerados
-e realizar sobre eles a seguinte operação para gerar o próximo valor:
+Mas o verdadeiro motivo de estarmos fornecendo o SplitMIx aqui não é
+esta propriedade. Não há planos de fornecer o suporte para geradores
+divisíveis aqui nesta API. Nosso verdadeiro interesse nete gerador é o
+fato de que este gerador tem uma natureza diferente dos demais
+definidos aqui e pelo fato dele funcionar precisando apenas de uma
+semente de 64 bits.
+
+Lembre-se que no final da seção do Mersenne Twister foi necessário
+iicializar um estado de 312 bits mesmo que a nossa semente inicial
+tenha menos de 312 bits aleatórios. No caso do Mersenne Twister,
+usamos exatamente o método sugerido em sua implementação de
+referência, a qual consistia em usar outro RNG para preencher o estado
+inicial dada a semente que temos. Mas nes todos os geradores possuem
+um método padrão recomendado para preencher o estado inicial. Para os
+casos em que não há um método padrão, precisamos justamente de um
+gerador que use sementes pequenas, e publicações como [Matsumoto,
+2007] mostram a importância de usarmos para este fim geradores
+radicalmente diferentes para evitar correlação entre sequências
+geradas com sementes semelhantes.
+
+Ignorando os mecanismos de dividir a estrutura do gerador, o SplitMix
+é bastante simples. Ele foi criado à partir da ideia de ter um estado
+de 64 bits, e cada vez que um novo valor precisa ser gerado, o estado
+é atualizado para um novo valor e retornamos o resultado de uma função
+hash aplicada sobre o estado.
+
+Exceto que por razões de performance, na prática ao invés de aplicar
+uma função hash inteira, usamos um misturador de bits: um componente
+que é parte de algumas funções hash e é responsável por evitar
+correlações entre valores de entrada semelhantes. O misturador de bits
+usado no SplaitMix64 é um qu foi definido originalmente para uma
+função hash chamada de MurmurHash3:
 
 \iniciocodigo
-@<Xorshiro: Computa próximo elemento@>=
+@<SplitMix: Misturador de Bits@>=
 {
-  uint64_t tmp = rng -> w[1] * 5;
-  ret = ((tmp << 7) | (tmp >> 57)) * 9;
+  uint64_t tmp = *state;
+  tmp = (tmp ^ (tmp >> 33)) * 0xff51afd7ed558ccdl;
+  tmp = (tmp ^ (tmp >> 33)) * 0xc4ceb9fe1a85ec53l;
+  ret = tmp ^ (tmp >> 33);
 } 
 @
 \fimcodigo
 
-O estado formado por apenas 4 números é atualizado após a geração de
-cada elemento. Isso é feito como na definição de função abaixo:
+E antes de computar o misturador de bits acima, nós também temos que
+atualizar o estado do RNG com a seguinte linha de código,
+onde \monoespaco{gamma} é uma constante ímpar:
+
+\iniciocodigo
+@<SplitMix: Atualiza Estado@>=
+{
+  *state +=  gamma;
+} 
+@
+\fimcodigo
+
+A construção final da função que retorna um novo número
+pseudo-randômico é:
+
+\iniciocodigo
+@<Funções Auxiliares@>=
+#if defined(W_RNG_SPLITMIX) || defined(W_RNG_XOSHIRO)
+static uint64_t splitmix_next(uint64_t *state, uint64_t gamma){
+  uint64_t ret;
+  @<SplitMix: Misturador de Bits@>
+  @<SplitMix: Atualiza Estado@>
+  return ret;
+}
+#endif
+@
+\fimcodigo
+
+Se estivermos usando o SplitMix não para inicializar outros geradores
+de números pseudo-randômicos, para para usar ele mesmo como nosso
+gerador escolhido, iremos definir a estrutura de nosso gerador com o
+estado e o valor gamma dele:
+
+\iniciocodigo
+@<Estrutura RNG@>=
+#ifdef W_RNG_SPLITMIX
+struct _Wrng{
+  uint64_t state, gamma;
+  @<Declaração de Mutex@>
+};
+#endif
+@
+\fimcodigo
+
+E a função da API para gerar um novo número pseudo-randômico é:
 
 \iniciocodigo
 @<Definição de \_Wrand@>=
-#ifdef W_RNG_XORSHIRO
+#ifdef W_RNG_SPLITMIX
 uint64_t _Wrand(struct _Wrng *rng){
   uint64_t ret;
   @<Mutex:WAIT@>
-  uint64_t t = rng -> w[1] << 17;
-  @<Xorshiro: Computa próximo elemento@>
-  // Atualiza estado:
-  rng -> w[2] ^= rng -> w[0];
-  rng -> w[3] ^= rng -> w[1];
-  rng -> w[1] ^= rng -> w[2];
-  rng -> w[0] ^= rng -> w[3];
-  rng -> w[2] ^= t;
-  rng -> w[3] = ((rng -> w[3] << 45) | (rng -> w[3] >> 19));
+  ret = splitmix_next(&(rng -> state), rng -> gamma);
   @<Mutex:SIGNAL@>
   return ret;
 }
@@ -763,14 +820,65 @@ uint64_t _Wrand(struct _Wrng *rng){
 @
 \fimcodigo
 
-A estrutura do gerador de números aleatórios Xorshiro então possui
-apenas os últimos 4 valores de estado e o último valor de 64 bits a
-ser retornado. Como nosso gerador só retorna números de 32 bits,
-podemos aproveitar um mesmo valor gerado para retornar duas vezes:
+Podemos inicializar a estrutura do gerador diretamente usando a
+semente para preencher o estado inicial. Se tiver mais bits aleatórios
+na semente, podemos também usá-los para escolher o valor de gamma,
+apenas cuidando para manter ele um valor ímpar e assim poder garantir
+um período de $2^{64}$:
+
+\iniciocodigo
+@<Definição de \_Wcreate\_rng@>=
+#ifdef W_RNG_SPLITMIX
+struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
+                           uint64_t *seed){
+  struct _Wrng *rng = (struct _Wrng *) allocator(sizeof(struct _Wrng));
+  if(rng != NULL){
+    if(size < 1)
+      rng -> state = 0x32147198b5436569;
+    else
+      rng -> state = seed[0];
+    if(size < 2)
+      rng -> gamma = 0x9e3779b97f4a7c15;
+    else
+      rng -> gamma = (seed[1] | 1);
+    @<Inicialização de Mutex@>
+  }
+  return rng;
+}
+#endif
+@
+\fimcodigo
+
+Isso significa que se usarmos o SplitMix como nosso gerador,
+precisamos de uma semente com 1 ou 2 números de 64 bits:
+
+\iniciocodigo
+@<Avisa Tamanho Ideal da Semente@>=
+#ifdef W_RNG_SPLITMIX
+#define _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE  1
+#define _W_RNG_MAXIMUM_RECOMMENDED_SEED_SIZE  2
+#endif
+@
+\fimcodigo
+
+
+\subsecao{2.4. Xoshiro256**}
+
+Xoshiro e Mersenne Twister sã geradores com algumas
+similaridades. Ambos usam valores gerados do passado para produzir
+novos valores envolvendo uma multiplicação de matriz e vetor
+binários. Mas ao contrario do Mersenne Twister, cada novo valor gerado
+pelo Xoshiro tem 256 bits ao invés de 128. E ao invés de gerar o
+próximo valor levando em conta os 156 valores anteriores gerados,
+Xoshiro gera o próximo valor apenas à partir do valor imediatamente
+anterior gerado.
+
+Na estrutura do gerador nós armazenamos o número de 256 bits como uma
+sequência de quatro valores de 64 bits:
 
 \iniciocodigo
 @<Estrutura RNG@>=
-#ifdef W_RNG_XORSHIRO
+#ifdef W_RNG_XOSHIRO
 struct _Wrng{
   uint64_t w[4];   // Valores de estado
   @<Declaração de Mutex@>
@@ -779,14 +887,93 @@ struct _Wrng{
 @
 \fimcodigo
 
-Por fim, a inicialização do gerador Xorshiro** consistirá em copiar
+Assim como o Mersenne Twister, para produzir o próximo valor, nós
+multiplicamos o valor anterior por uma matrix com operações no corpo
+GF(2): usamos o operador AND nos bits ao invés da multiplicação e
+usamos o operador XOR ao invés da soma. E também usamos uma matriz que
+ao mesmo tempo produz bons resultados e é conveniente o bastante para
+não precisar ser armazenada. Ao invés disso, a multiplicação por
+matriz pode ser escrita usando apenas poucas operações rápidas
+compostas por AND, XOR e SHIFT.
+
+De fato, a multiplicação por matriz que atualiza nosso estado é
+representada apenas por esse código de 7 linhas:
+
+\iniciocodigo
+@<Xoshiro: Multiplicação por Matriz@>=
+{
+  uint64_t t = rng -> w[1] << 17;
+  rng -> w[2] ^= rng -> w[0];
+  rng -> w[3] ^= rng -> w[1];
+  rng -> w[1] ^= rng -> w[2];
+  rng -> w[0] ^= rng -> w[3];
+  rng -> w[2] ^= t;
+  rng -> w[3] = ((rng -> w[3] << 45) | (rng -> w[3] >> 19));
+}
+@
+\fimcodigo
+
+Mas como estamos gerando números pseudo-randômicos usando uma simples
+transfrmação linear e o nosso estado é muito pequeno (ao contrário do
+estado do Mersenne Twister), precisamos usar um truque adicional para
+evitar falhar em testes estatísticos. Ao invés de retornar o número de
+256 bits que geramos, nós iremos sempe produzir a saída à partir de um
+misturador que escolhe parte do valor total e aplica sobre ele
+operações que mascaram a relação entre o valor atual e os anteriores:
+
+\iniciocodigo
+@<Xoshiro: Misturador@>=
+{
+  uint64_t tmp = rng -> w[1] * 5;
+  ret = ((tmp << 7) | (tmp >> 57)) * 9;
+} 
+@
+\fimcodigo
+
+E finalmente, definimos a função que retorna o próximo valor
+pseudo-randômico como abaixo, primeiro gerando o valor a ser
+retornado \monoespaco{ret} à partir do misturador, e então obtendo o
+próximo estado à partir das operções que representam multiplicação por
+matriz:
+
+\iniciocodigo
+@<Definição de \_Wrand@>=
+#ifdef W_RNG_XOSHIRO
+uint64_t _Wrand(struct _Wrng *rng){
+  uint64_t ret;
+  @<Mutex:WAIT@>
+  @<Xoshiro: Misturador@>
+  @<Xoshiro: Multiplicação por Matriz@>
+  @<Mutex:SIGNAL@>
+  return ret;
+}
+#endif
+@
+\fimcodigo
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Por fim, a inicialização do gerador Xoshiro** consistirá em copiar
 para seu estado inicial a semente e caso ela não tenha um tamanho
 grande o bastante, nós a aumentamos usando o gerador ``splitmix64''
 como sugerido pela implementação de referência:
 
 \iniciocodigo
 @<Definição de \_Wcreate\_rng@>=
-#ifdef W_RNG_XORSHIRO
+#ifdef W_RNG_XOSHIRO
 struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
                            uint64_t *seed){
   int i;
@@ -821,7 +1008,7 @@ recomendado para a semente deste gerador:
 
 \iniciocodigo
 @<Avisa Tamanho Ideal da Semente@>=
-#ifdef W_RNG_XORSHIRO
+#ifdef W_RNG_XOSHIRO
 #define _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE  1
 #define _W_RNG_MAXIMUM_RECOMMENDED_SEED_SIZE  4
 #endif
@@ -832,7 +1019,7 @@ recomendado para a semente deste gerador:
 \subsecao{2.4. PCG (\italico{Permuted Congruential Generator})}
 
 O terceiro gerador que será fornecido como opção é o PCG. Este gerador
-usa ainda menos bits de estado que o Xorshiro, mas assim como o
+usa ainda menos bits de estado que o Xoshiro, mas assim como o
 Mersenne Twister usa variáveis de 128 bits:
 
 \iniciocodigo
@@ -983,7 +1170,8 @@ uint64_t _Wrand(struct _Wrng *rng){
   multiplier = 2549297995355413924ULL;
   multiplier = multiplier << 64;
   multiplier += 4865540595714422341ULL;
-  @<Mutex:WAIT@>
+
+@<Mutex:WAIT@>
   // Advance internal state
   rng -> state = rng -> state * multiplier + rng -> increment;
   xorshifted = (((uint64_t)(rng -> state >> 64u)) ^ ((uint64_t) rng -> state));
@@ -1122,7 +1310,7 @@ ideal é que nossa semente tenha entre 4 e 5 valores:
 \fimcodigo
 
 A questão é o que fazr se nossa semente for menor que isso. Faremos a
-mesma coisa que fizemos com o Xorshiro: usamos o algoritmo splitmix64
+mesma coisa que fizemos com o Xoshiro: usamos o algoritmo splitmix64
 para preencher os próximos à partir do valor que temos (e usamos uma
 constante se não existir nenhum). Mas não se deve ter nenhuma
 expenctativa de que a qualidade é mantida com uma semente reduzida
@@ -1222,6 +1410,7 @@ O arquivo com o código-fonte de nossas funções terá a seguinte forma:
 @<Incluir Cabeçalhos Necessários@>
 #include "random.h"
 #include <string.h> // memcpy
+@<Funções Auxiliares@>
 @<Definição de \_Wrand@>
 @<Definição de \_Wcreate\_rng@>
 @<Definição de \_Wdestroy\_rng@>
@@ -1276,7 +1465,7 @@ e uns. A taxa de sucesso para as implementações apresentadas foi:
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
 Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
-&&SFMT&&92\%&&Xorshiro**&&91\%&\cr\linha
+&&SFMT&&92\%&&Xoshiro**&&91\%&\cr\linha
 &&PCG&&93\%&&\monoespaco{LCG}&&93\%&\cr\linha
 &&ChaCha20&&91\%&&&&&\cr\linha}}
 
@@ -1297,7 +1486,7 @@ $1/2^d$. No nosso caso escolhemos $d=15$. O resultado obtido foi:
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
 Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
-&&SFMT&&92\%&&Xorshiro**&&92\%&\cr\linha
+&&SFMT&&92\%&&Xoshiro**&&92\%&\cr\linha
 &&PCG&&93\%&&\monoespaco{LCG}&&91\%&\cr\linha
 &&ChaCha20&&93\%&&&&&\cr\linha}}
 
@@ -1330,7 +1519,7 @@ medimos a taxa de sucesso. O resultado obtido foi:
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
 Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
-&&SFMT&&92\%&&Xorshiro**&&92\%&\cr\linha
+&&SFMT&&92\%&&Xoshiro**&&92\%&\cr\linha
 &&PCG&&91\%&&\monoespaco{LCG}&&86\%&\cr\linha
 &&ChaCha20&&91\%&&&&&\cr\linha}}
 
@@ -1357,7 +1546,7 @@ O resultado obtido foi:
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
 Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
-&&SFMT&&92\%&&Xorshiro**&&93\%&\cr\linha
+&&SFMT&&92\%&&Xoshiro**&&93\%&\cr\linha
 &&PCG&&91\%&&\monoespaco{LCG}&&92\%&\cr\linha
 &&ChaCha20&&92\%&&&&&\cr\linha}}
 
@@ -1386,7 +1575,7 @@ O resultado do teste foi:
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
 Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
-&&SFMT&&91\%&&Xorshiro**&&92\%&\cr\linha
+&&SFMT&&91\%&&Xoshiro**&&92\%&\cr\linha
 &&PCG&&92\%&&\monoespaco{LCG}&&00\%&\cr\linha
 &&ChaCha20&&92\%&&&&&\cr\linha}}
 
@@ -1411,7 +1600,7 @@ O nosso resultado foi:
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
 Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
-&&SFMT&&93\%&&Xorshiro**&&92\%&\cr\linha
+&&SFMT&&93\%&&Xoshiro**&&92\%&\cr\linha
 &&PCG&&93\%&&\monoespaco{LCG}&&02\%&\cr\linha
 &&ChaCha20&&92\%&&&&&\cr\linha}}
 
@@ -1439,7 +1628,7 @@ O resultado obtido foi:
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
 Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
-&&SFMT&&92\%&&Xorshiro**&&91\%&\cr\linha
+&&SFMT&&92\%&&Xoshiro**&&91\%&\cr\linha
 &&PCG&&90\%&&\monoespaco{LCG}&&90\%&\cr\linha
 &&ChaCha20&&90\%&&&&&\cr\linha}}
 
@@ -1463,7 +1652,7 @@ O resultado foi:
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
 Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
-&&SFMT&&92\%&&Xorshiro**&&92\%&\cr\linha
+&&SFMT&&92\%&&Xoshiro**&&92\%&\cr\linha
 &&PCG&&91\%&&\monoespaco{LCG}&&86\%&\cr\linha
 &&ChaCha20&&92\%&&&&&\cr\linha}}
 
@@ -1497,7 +1686,7 @@ O resultado do teste foi:
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
 Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
-&&SFMT&&94\%&&Xorshiro**&&93\%&\cr\linha
+&&SFMT&&94\%&&Xoshiro**&&93\%&\cr\linha
 &&PCG&&94\%&&\monoespaco{LCG}&&92\%&\cr\linha
 &&ChaCha20&&93\%&&&&&\cr\linha}}
 
@@ -1528,7 +1717,7 @@ Nosso resultado foi:
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
 Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
-&&SFMT&&92\%&&Xorshiro**&&92\%&\cr\linha
+&&SFMT&&92\%&&Xoshiro**&&92\%&\cr\linha
 &&PCG&&92\%&&\monoespaco{LCG}&92\%&\cr\linha
 &&ChaCha20&&91\%&&&&&\cr\linha}}
 
@@ -1566,7 +1755,7 @@ O resultado obtido foi:
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
 Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
-&&SFMT&&93\%&&Xorshiro**&&93\%&\cr\linha
+&&SFMT&&93\%&&Xoshiro**&&93\%&\cr\linha
 &&PCG&&93\%&&\monoespaco{LCG}&93\%&\cr\linha
 &&ChaCha20&&93\%&&&&&\cr\linha}}
 
@@ -1610,9 +1799,29 @@ O resultado em segundos foi:
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
 Tempo (s)\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Tempo (s)&\cr\linha
-&&SFMT&&9.386125&&Xorshiro**&&7.703922&\cr\linha
+&&SFMT&&9.386125&&Xoshiro**&&7.703922&\cr\linha
 &&PCG&&7.589271&&\monoespaco{LCG}&7.328776&\cr\linha
 &&ChaCha20&&10.278860&&&&&\cr\linha}}
+
+Fazendo os testes no mesmo computador, mas usando o Windows 10 e
+compilando com o compilador padrão do Visual Studio (que não suporta
+variáveis de 128 bits e por isso não pode executar nosso código do PCG
+e Mersenne Twister), obtivemos como resultado:
+
+\vbox{%A forma mais gseral de remover espaçamento entre linhas:
+\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
+\def\linha{\noalign{\hrule}}
+\def\hidewidth{\hskip-1000pt plus 1fill}
+\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
+\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
+\hfil#& \vrule#& \hfil#\hfil& \vrule#&
+\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
+&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+Tempo (s)\hidewidth&&
+\omit\hidewidth Gerador\hidewidth&&Tempo (s)&\cr\linha
+&&SFMT&&-&&Xoshiro**&&4.415854&\cr\linha
+&&PCG&&-&&\monoespaco{LCG}&3.810040&\cr\linha
+&&ChaCha20&&7.9733357&&&&&\cr\linha}}
 
 Repetindo os testes em um outro computador mais novo, um Intel
 i5-3210M quad core com 2,50GHz e também 4 GB de memória RAM, e desta
@@ -1630,7 +1839,7 @@ resultado foi:
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
 Tempo (s)\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Tempo (s)&\cr\linha
-&&SFMT&&2.683414&&Xorshiro**&&2.526265&\cr\linha
+&&SFMT&&2.683414&&Xoshiro**&&2.526265&\cr\linha
 &&PCG&&2.266165&&\monoespaco{LCG}&2.360528&\cr\linha
 &&ChaCha20&&7.053677&&&&&\cr\linha}}
 
@@ -1653,41 +1862,52 @@ navegador  Firefox 86.0, o resultado foi:
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
 Tempo (s)\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Tempo (s)&\cr\linha
-&&SFMT&&1.272&&Xorshiro**&&0.445&\cr\linha
+&&SFMT&&1.272&&Xoshiro**&&0.445&\cr\linha
 &&PCG&&1.299&&\monoespaco{LCG}&0.344&\cr\linha
 &&ChaCha20&&3.638&&&&&\cr\linha}}
 
 Chama a atenção como o desempenho foi mais rápido compilando e
 executando desta forma que da forma anterior, quando o código
 executava nativamente. Outra informação interessante é que neste
-ambiente o Xorshiro consegue um desempenho bem melhor que o PCG, que
+ambiente o Xoshiro consegue um desempenho bem melhor que o PCG, que
 parece ter uma grande penalidade de desempenho quando executado assim.
 
-\secao{5. Conclusão}
+\secao{5. Conclusão: Escolhendo o Algoritmo Padrão}
 
-Apesar de gastar muito mais memória que as outras implementações, a
-versão utilizada do Mersenne Twister (o SFMT) ainda é muito mais
-rápida que o dos algoritmos mais recentes utilizados, mesmo que não
-utilizemos algumas otimizações comuns (tornar a função ``inline'' ou
-gerar antecipadamente muitos valores em um buffer). Isso possivelmente
-se deve às suas operações feitas para serem rápidas em processadores
-com registradores e operações de 128 bits. Contudo, é importante notar
-que nós só implementamos uma versão do Mersenne Twister que usa tais
-recursos e também usa uma extensão da linguagem C com variáveis de 128
-bits. Caso estas opções não estejam disponíveis, temos que recorrer a
-outro algoritmo.
+Para escolhermos qual será o algoritmo usado por padrão em nossa
+biblioteca, caso o usuário não defina macro que especifique o
+algoritmo, iremos primeiro levar em conta se o algoritmo pode ser
+executado na máquina ou arquitetura atual. Por exemplo, a
+implementação do PCG e de Mersenne Twister que fizemos não é muito
+portável, exigindo suporte do compilador para inteiros de 128
+bits. Compiladores como o Clang e GCC atualmente cumprem o
+requisito. Mas o Visual Studio da Microsoft não.
 
-Por causa disso, e como não há uma grande diferença de qualidade entre
-os algoritmos, em nossa biblioteca usaremos o SFMT se possível, e se
-não for possível, usemos o PCG por se mostrar ligeiramente mais rápido
-e menor que o Xorshiro:
+Também iremos levar em conta se o algoritmo passou em todos os testes
+que fizemos. No momento, somente o LCG reprovou em um dos testes e por
+isso apesar de tender a ser tão rápido não deverá ser a prioridade.
+
+Por fim, levaremos em conta o desempenho deles e, se necessário, como
+critério de desempate, a quantidade de memória que ocupam (o que
+penaliza neste caso o Mersenne Twister que precisa de um vetor de
+elementos enorme como estado interno).
+
+Levando em conta tais critérios, se estivermos gerando código Web
+Assembly, iremos usar o Xoshiro por ser o algoritmo que é mais rápido
+dentre os que passaram em todos os testes neste ambiente.
+
+Nos demais ambientes, o PCG é ligeiramente mais rápido, mas nem sempre
+ele pode ser usado por ter um código não tão portável. Em tais casos,
+se for possível usaremos ele, e se não for, usaremos o Xoshiro que
+tende a ter um desempenho próximo do PCG mesmo:
 
 \iniciocodigo
 @<Escolhe Algoritmo Padrão do RNG@>=
-#if !defined(W_RNG_MERSENNE_TWISTER) && !defined(W_RNG_XORSHIRO) && \
-!defined(W_RNG_PCG) && !defined(W_RNG_LCG) && !defined(W_RNG_CHACHA20)
-#ifdef __SIZEOF_INT128__
-#define W_RNG_MERSENNE_TWISTER
+#if !defined(W_RNG_MERSENNE_TWISTER) && !defined(W_RNG_XOSHIRO) && \
+!defined(W_RNG_PCG) && !defined(W_RNG_LCG) && !defined(W_RNG_CHACHA20) && \
+ !defined(W_RNG_SPLITMIX)
+#if !defined(__SIZEOF_INT128__) || defined(__EMSCRIPTEN__)
+#define W_RNG_XOSHIRO
 #else
 #define W_RNG_PCG
 #endif
@@ -1707,5 +1927,7 @@ edição.}
 \referencia{Saito, M.; Matsumoto M. (2006) ``SIMD-oriented fast Mersenne Twister: a 128-bit pseudorandom number generator'', Monte Carlo and Quasi-Monte Carlo Methods, Springer, p. 607--622}.
 
 \referencia{Steele, G.; Vigna S. (2021) ``Computationally Easy, Spectrally Good Multipliers for Congruential Pseudorandom Number Generators'', arXiv preprint arXiv:2001.05304}.
+
+\referencia{Matsumoto, M; Wada I.; Kuramoto A.; Ashihara, H. (2007) ``Common Defects in the Initialization of Pseudrandom Number Generators'', ACM Trans. Model. Comput. Simul, 17, 4.}
 
 \fim
