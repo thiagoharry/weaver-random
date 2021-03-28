@@ -707,8 +707,8 @@ void test_runs_up(void){
   for(all_tests = 0; all_tests < 1000; all_tests ++){
     penalty = 0;
     for(three_tests = 0; three_tests < 3; three_tests ++){
-      int generated = 0, values[4096], count[6];
-      bool chosen[4096]; // Generating permutation of 4096 elements
+      int generated = 0, values[8192], count[6];
+      bool chosen[8192]; // Generating permutation of 4096 elements
       for(i = 0; i < n; i ++) chosen[i] = 0;
       for(i = 0; i < 6; i ++) count[i] = 0;
       while(generated < n){

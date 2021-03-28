@@ -19,7 +19,7 @@
 #line 779 "weaver-random.tex"
 
 #if defined(W_RNG_SPLITMIX) || defined(W_RNG_XOSHIRO)
-static uint64_t splitmix_next(uint64_t*state,uint64_t gamma){
+static inline uint64_t splitmix_next(uint64_t*state,uint64_t gamma){
 uint64_t ret;
 /*23:*/
 #line 753 "weaver-random.tex"

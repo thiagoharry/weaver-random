@@ -778,7 +778,7 @@ pseudo-randômico é:
 \iniciocodigo
 @<Funções Auxiliares@>=
 #if defined(W_RNG_SPLITMIX) || defined(W_RNG_XOSHIRO)
-static uint64_t splitmix_next(uint64_t *state, uint64_t gamma){
+static inline uint64_t splitmix_next(uint64_t *state, uint64_t gamma){
   uint64_t ret;
   @<SplitMix: Misturador de Bits@>
   @<SplitMix: Atualiza Estado@>
@@ -1467,7 +1467,7 @@ Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&92\%&&Xoshiro**&&91\%&\cr\linha
 &&PCG&&93\%&&\monoespaco{LCG}&&93\%&\cr\linha
-&&ChaCha20&&91\%&&&&&\cr\linha}}
+&&ChaCha20&&91\%&&SplitMix64&&92\%&\cr\linha}}
 
 \subsecao{3.2. Teste Serial}
 
@@ -1488,7 +1488,7 @@ Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&92\%&&Xoshiro**&&92\%&\cr\linha
 &&PCG&&93\%&&\monoespaco{LCG}&&91\%&\cr\linha
-&&ChaCha20&&93\%&&&&&\cr\linha}}
+&&ChaCha20&&93\%&&SplitMix64&&93\%&\cr\linha}}
 
 \subsecao{3.3. Teste de lacuna}
 
@@ -1521,7 +1521,7 @@ Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&92\%&&Xoshiro**&&92\%&\cr\linha
 &&PCG&&91\%&&\monoespaco{LCG}&&86\%&\cr\linha
-&&ChaCha20&&91\%&&&&&\cr\linha}}
+&&ChaCha20&&91\%&&SplitMix64&&90\%&\cr\linha}}
 
 \subsecao{3.4. Teste de Pôquer}
 
@@ -1548,7 +1548,7 @@ Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&92\%&&Xoshiro**&&93\%&\cr\linha
 &&PCG&&91\%&&\monoespaco{LCG}&&92\%&\cr\linha
-&&ChaCha20&&92\%&&&&&\cr\linha}}
+&&ChaCha20&&92\%&&SplitMix64&&91\%&\cr\linha}}
 
 \subsecao{3.5. Teste do Colecionador}
 
@@ -1577,7 +1577,7 @@ Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&91\%&&Xoshiro**&&92\%&\cr\linha
 &&PCG&&92\%&&\monoespaco{LCG}&&00\%&\cr\linha
-&&ChaCha20&&92\%&&&&&\cr\linha}}
+&&ChaCha20&&92\%&&SplitMix64&&93\%&\cr\linha}}
 
 \subsecao{3.6. Teste da Permutação}
 
@@ -1602,7 +1602,7 @@ Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&93\%&&Xoshiro**&&92\%&\cr\linha
 &&PCG&&93\%&&\monoespaco{LCG}&&02\%&\cr\linha
-&&ChaCha20&&92\%&&&&&\cr\linha}}
+&&ChaCha20&&92\%&&SplitMix64&&93\%&\cr\linha}}
 
 \subsecao{3.7. Teste de Tamanho de Sequêncas Ascendentes}
 
@@ -1630,7 +1630,7 @@ Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&92\%&&Xoshiro**&&91\%&\cr\linha
 &&PCG&&90\%&&\monoespaco{LCG}&&90\%&\cr\linha
-&&ChaCha20&&90\%&&&&&\cr\linha}}
+&&ChaCha20&&90\%&&SplitMix64&&90\%&\cr\linha}}
 
 \subsecao{3.8. Teste do Maior de $t$}
 
@@ -1654,7 +1654,7 @@ Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&92\%&&Xoshiro**&&92\%&\cr\linha
 &&PCG&&91\%&&\monoespaco{LCG}&&86\%&\cr\linha
-&&ChaCha20&&92\%&&&&&\cr\linha}}
+&&ChaCha20&&92\%&&SplitMix64&&92\%&\cr\linha}}
 
 \subsecao{3.9. Teste de Colisões}
 
@@ -1688,7 +1688,7 @@ Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&94\%&&Xoshiro**&&93\%&\cr\linha
 &&PCG&&94\%&&\monoespaco{LCG}&&92\%&\cr\linha
-&&ChaCha20&&93\%&&&&&\cr\linha}}
+&&ChaCha20&&93\%&&SplitMix64&&92\%&\cr\linha}}
 
 \subsecao{3.10. Teste de Espaçamento de Aniversário}
 
@@ -1719,7 +1719,7 @@ Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&92\%&&Xoshiro**&&92\%&\cr\linha
 &&PCG&&92\%&&\monoespaco{LCG}&92\%&\cr\linha
-&&ChaCha20&&91\%&&&&&\cr\linha}}
+&&ChaCha20&&91\%&&SplitMix64&&91\%&\cr\linha}}
 
 \subsecao{3.11. Teste da Correlação Serial}
 
@@ -1757,7 +1757,7 @@ Sucesso\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&93\%&&Xoshiro**&&93\%&\cr\linha
 &&PCG&&93\%&&\monoespaco{LCG}&93\%&\cr\linha
-&&ChaCha20&&93\%&&&&&\cr\linha}}
+&&ChaCha20&&93\%&&SplitMix64&&93\%&\cr\linha}}
 
 \subsecao{3.12. Conclusão dos Testes}
 
@@ -1801,7 +1801,7 @@ Tempo (s)\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Tempo (s)&\cr\linha
 &&SFMT&&9.386125&&Xoshiro**&&7.703922&\cr\linha
 &&PCG&&7.589271&&\monoespaco{LCG}&7.328776&\cr\linha
-&&ChaCha20&&10.278860&&&&&\cr\linha}}
+&&ChaCha20&&10.278860&&SplitMix64&&7.618872&\cr\linha}}
 
 Fazendo os testes no mesmo computador, mas usando o Windows 10 e
 compilando com o compilador padrão do Visual Studio (que não suporta
