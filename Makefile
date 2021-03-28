@@ -26,6 +26,7 @@ wasm:
 	emcc $(CFLAGS) -Wall -O2 -DW_RNG_CHACHA20 tests/test.c src/random.c -o docs/chacha.html -lm
 	emcc $(CFLAGS) -Wall -O2 -DW_RNG_MERSENNE_TWISTER tests/test.c src/random.c -o docs/sfmt.html -lm
 	emcc $(CFLAGS) -Wall -O2 -DW_RNG_XORSHIRO tests/test.c src/random.c -o docs/xorshiro.html -lm
+	emcc $(CFLAGS) -Wall -O2 -DW_RNG_SPLITMIX tests/test.c src/random.c -o docs/splitmix.html -lm
 clean:
 	rm -f *~ *.core *.scn *.dvi *.idx *.log tests/*~ test bench benchmark/*~
 distclean: clean
