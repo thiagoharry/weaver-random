@@ -864,14 +864,14 @@ precisamos de uma semente com 1 ou 2 números de 64 bits:
 
 \subsecao{2.4. Xoshiro256**}
 
-Xoshiro e Mersenne Twister sã geradores com algumas
+Xoshiro e Mersenne Twister são geradores com algumas
 similaridades. Ambos usam valores gerados do passado para produzir
 novos valores envolvendo uma multiplicação de matriz e vetor
 binários. Mas ao contrario do Mersenne Twister, cada novo valor gerado
 pelo Xoshiro tem 256 bits ao invés de 128. E ao invés de gerar o
 próximo valor levando em conta os 156 valores anteriores gerados,
 Xoshiro gera o próximo valor apenas à partir do valor imediatamente
-anterior gerado.
+anterior gerado, precisando assim de menos memória.
 
 Na estrutura do gerador nós armazenamos o número de 256 bits como uma
 sequência de quatro valores de 64 bits:
@@ -933,8 +933,7 @@ operações que mascaram a relação entre o valor atual e os anteriores:
 E finalmente, definimos a função que retorna o próximo valor
 pseudo-randômico como abaixo, primeiro gerando o valor a ser
 retornado \monoespaco{ret} à partir do misturador, e então obtendo o
-próximo estado à partir das operções que representam multiplicação por
-matriz:
+próximo estado com a multiplicação por matriz:
 
 \iniciocodigo
 @<Definição de \_Wrand@>=
@@ -952,24 +951,12 @@ uint64_t _Wrand(struct _Wrng *rng){
 \fimcodigo
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 Por fim, a inicialização do gerador Xoshiro** consistirá em copiar
-para seu estado inicial a semente e caso ela não tenha um tamanho
-grande o bastante, nós a aumentamos usando o gerador ``splitmix64''
-como sugerido pela implementação de referência:
+para seu estado inicial a semente, caso esta tenha 256 bits ou
+mais. Caso contrário, copiaremos o que temos e usaremos os últimos 64
+bits da semente para inicializar o estado do algoritmo SplitMix64
+usando um valor gama padrão e usamos os gerador do SplitMix64 para
+produzir os bits restantes:
 
 \iniciocodigo
 @<Definição de \_Wcreate\_rng@>=
@@ -979,21 +966,18 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
   int i;
   struct _Wrng *rng = (struct _Wrng *) allocator(sizeof(struct _Wrng));
   if(rng != NULL){
-    for(i = 0; i < 4; i ++){
-      if(i < size)
+    if(size >= 4){
+      for(i = 0; i < 4; i ++)
         rng -> w[i] = seed[i];
-      else{
-        if(i == 0)
-          rng -> w[i] = 0;
-        else{
-          uint64_t z;
-          rng -> w[i - 1] += 0x9e3779b97f4a7c15; 
-          z = rng -> w[i - 1];
-          z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9;
-          z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
-          rng -> w[i] = z ^ (z >> 31);
-        }
-      }
+    }
+    else{
+      uint64_t state = 0x32147198b5436569, gamma = 0x9e3779b97f4a7c15;
+      for(i = 0; i < size - 1; i ++)
+        rng -> w[i] = seed[i];
+      if(size > 1)
+        state = seed[i];
+      for(; i < 4; i ++)
+        rng -> w[i] = splitmix_next(&state, gamma);
     }
     @<Inicialização de Mutex@>
   }
@@ -1841,7 +1825,7 @@ Tempo (s)\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Tempo (s)&\cr\linha
 &&SFMT&&2.683414&&Xoshiro**&&2.526265&\cr\linha
 &&PCG&&2.266165&&\monoespaco{LCG}&2.360528&\cr\linha
-&&ChaCha20&&7.053677&&&&&\cr\linha}}
+&&ChaCha20&&7.053677&&SplitMix64&&2.456589&\cr\linha}}
 
 Neste cenário, as diferenças entre todos os outros algoritmos e o
 ChaCha20 se tornaram ainda mais evidentes. E de forma interessante, o
@@ -1864,7 +1848,7 @@ Tempo (s)\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Tempo (s)&\cr\linha
 &&SFMT&&1.272&&Xoshiro**&&0.445&\cr\linha
 &&PCG&&1.299&&\monoespaco{LCG}&0.344&\cr\linha
-&&ChaCha20&&3.638&&&&&\cr\linha}}
+&&ChaCha20&&3.638&&SplitMix64&&0.388&\cr\linha}}
 
 Chama a atenção como o desempenho foi mais rápido compilando e
 executando desta forma que da forma anterior, quando o código

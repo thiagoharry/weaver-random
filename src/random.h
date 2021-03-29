@@ -12,7 +12,7 @@ extern"C"{
 #include <pthread.h> 
 #endif
 /*51:*/
-#line 1905 "weaver-random.tex"
+#line 1889 "weaver-random.tex"
 
 #if !defined(W_RNG_MERSENNE_TWISTER) && !defined(W_RNG_XOSHIRO) && \
 !defined(W_RNG_PCG) && !defined(W_RNG_LCG) && !defined(W_RNG_CHACHA20) && \
@@ -108,7 +108,7 @@ CRITICAL_SECTION mutex;
 };
 #endif
 /*:30*//*36:*/
-#line 1026 "weaver-random.tex"
+#line 1010 "weaver-random.tex"
 
 #ifdef W_RNG_PCG
 #ifdef __SIZEOF_INT128__
@@ -125,7 +125,7 @@ pthread_mutex_t mutex;
 CRITICAL_SECTION mutex;
 #endif
 /*:7*/
-#line 1032 "weaver-random.tex"
+#line 1016 "weaver-random.tex"
 
 };
 #else
@@ -133,7 +133,7 @@ CRITICAL_SECTION mutex;
 #endif
 #endif
 /*:36*//*45:*/
-#line 1285 "weaver-random.tex"
+#line 1269 "weaver-random.tex"
 
 #ifdef W_RNG_CHACHA20
 struct _Wrng{
@@ -150,7 +150,7 @@ pthread_mutex_t mutex;
 CRITICAL_SECTION mutex;
 #endif
 /*:7*/
-#line 1291 "weaver-random.tex"
+#line 1275 "weaver-random.tex"
 
 };
 #endif
@@ -186,21 +186,21 @@ struct _Wrng*_Wcreate_rng(void*(*alloc)(size_t),size_t size,uint64_t*seed);
 #define _W_RNG_MAXIMUM_RECOMMENDED_SEED_SIZE  2
 #endif
 /*:29*//*35:*/
-#line 1010 "weaver-random.tex"
+#line 994 "weaver-random.tex"
 
 #ifdef W_RNG_XOSHIRO
 #define _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE  1
 #define _W_RNG_MAXIMUM_RECOMMENDED_SEED_SIZE  4
 #endif
 /*:35*//*40:*/
-#line 1152 "weaver-random.tex"
+#line 1136 "weaver-random.tex"
 
 #ifdef W_RNG_PCG
 #define _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE  2
 #define _W_RNG_MAXIMUM_RECOMMENDED_SEED_SIZE  4
 #endif
 /*:40*//*46:*/
-#line 1304 "weaver-random.tex"
+#line 1288 "weaver-random.tex"
 
 #ifdef W_RNG_CHACHA20
 #define _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE  4
