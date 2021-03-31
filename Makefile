@@ -19,7 +19,7 @@ test: tests/test.c src/random.c
 	./test_xoshiro
 	./test_pcg
 	./test_lcg
-	./test_spitmix
+	./test_splitmix
 wasm:
 	emcc $(CFLAGS) -Wall -O2 -DW_RNG_PCG tests/test.c src/random.c -o docs/pcg.html -lm
 	emcc $(CFLAGS) -Wall -O2 -DW_RNG_LCG tests/test.c src/random.c -o docs/lcg.html -lm

@@ -387,6 +387,8 @@ void test_equidistribution(void){
   _Wdestroy_rng(free, my_rng);
 }
 
+/*
+// No memory for this, bro. =-(
 void test_equidistribution32(void){
   struct _Wrng *my_rng = _Wcreate_rng(malloc, seed_size, seed);
   int three_tests, all_tests;
@@ -396,12 +398,13 @@ void test_equidistribution32(void){
     // Repeating the tests 3 times:
     penalty = 0;
     for(three_tests = 0; three_tests < 3; three_tests ++){
-      unsigned long values[4294967296llu]; // XXX: 2^k
+      uint_t values[4294967296llu]; // XXX: 2^k
       for(i = 0; i < 4294967296llu; i ++) // XXX
 	values[i] = 0;
       // Measuring n generations:
       for(i = 0; i < n; i ++)
 	values[read_random_bits(my_rng, 32)] ++; // XXX
+      // In a future with more memory, need another chi-square function
       penalty += chi_square(4294967296llu, values, NULL); // XXX
       if(penalty > 1){
 	fails ++;
@@ -412,7 +415,7 @@ void test_equidistribution32(void){
   quality("Quality of equidistribution test (32 bits)", (double) (1000 - fails) /
 	  (double) 1000);
   _Wdestroy_rng(free, my_rng);
-}
+  }*/
 
 
 void test_serial(void){
@@ -1013,7 +1016,7 @@ int main(int argc, char **argv){
   test_multithread();
 #endif
   test_equidistribution();
-  test_equidistribution32();
+  //test_equidistribution32();
   test_serial();
 #if !defined(__EMSCRIPTEN__)
   test_gap();
