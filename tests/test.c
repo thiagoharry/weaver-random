@@ -387,37 +387,6 @@ void test_equidistribution(void){
   _Wdestroy_rng(free, my_rng);
 }
 
-/*
-// No memory for this, bro. =-(
-void test_equidistribution32(void){
-  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed_size, seed);
-  int three_tests, all_tests;
-  int penalty, fails = 0;
-  unsigned long long n = 21474836480llu, i; // XXX: n = 2^k*5
-  for(all_tests = 0; all_tests < 1000; all_tests ++){
-    // Repeating the tests 3 times:
-    penalty = 0;
-    for(three_tests = 0; three_tests < 3; three_tests ++){
-      uint_t values[4294967296llu]; // XXX: 2^k
-      for(i = 0; i < 4294967296llu; i ++) // XXX
-	values[i] = 0;
-      // Measuring n generations:
-      for(i = 0; i < n; i ++)
-	values[read_random_bits(my_rng, 32)] ++; // XXX
-      // In a future with more memory, need another chi-square function
-      penalty += chi_square(4294967296llu, values, NULL); // XXX
-      if(penalty > 1){
-	fails ++;
-	break;
-      }
-    } // End of three_tests
-  } // End of all_tests
-  quality("Quality of equidistribution test (32 bits)", (double) (1000 - fails) /
-	  (double) 1000);
-  _Wdestroy_rng(free, my_rng);
-  }*/
-
-
 void test_serial(void){
   struct _Wrng *my_rng = _Wcreate_rng(malloc, seed_size, seed);
   int i, round_of_measures, three_tests, total_tests;
@@ -1004,7 +973,7 @@ int main(int argc, char **argv){
   printf("Recommended size for seed vector: (%d-%d)\n",
 	 _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE,
 	 _W_RNG_MAXIMUM_RECOMMENDED_SEED_SIZE);
-  //measure_time();
+  measure_time();
 #if defined(W_RNG_MERSENNE_TWISTER)
   test_mersenne_twister();
 #elif defined(W_RNG_XOSHIRO)
@@ -1016,7 +985,6 @@ int main(int argc, char **argv){
   test_multithread();
 #endif
   test_equidistribution();
-  //test_equidistribution32();
   test_serial();
 #if !defined(__EMSCRIPTEN__)
   test_gap();
