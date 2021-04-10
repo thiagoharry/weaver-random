@@ -777,7 +777,8 @@ pseudo-randômico é:
 
 \iniciocodigo
 @<Funções Auxiliares@>=
-#if defined(W_RNG_SPLITMIX) || defined(W_RNG_XOSHIRO) || defined(W_RNG_PCG)
+#if defined(W_RNG_SPLITMIX) || defined(W_RNG_XOSHIRO) || defined(W_RNG_PCG) || \
+  defined(W_RNG_CHACHA20)
 static inline uint64_t splitmix_next(uint64_t *state, uint64_t gamma){
   uint64_t ret;
   @<SplitMix: Misturador de Bits@>
@@ -1169,30 +1170,26 @@ esticar a aleatoriedae com o SplitMix:
 @
 \fimcodigo
 
-\subsecao{2.5. ChaCha20}
+\subsecao{2.6. ChaCha20}
 
-O ChaCha20 é um gerador projetado para ser criptograficamente
-seguro. Mas isso só é verdade se ele for alimentado com ua semente com
-um tamanho adequado, e se a semente realmente for obtida de maneira
-aleatória e uniforme, sem ser reaproveitada novamente. A implementação
-aqui feita, contudo, não deve ser usada para fins criptográficos
-sérios. Ela está sendo projetada para ser usada para fins de testes e
-também em projetos onde a segurança do gerador não é crítica. O motivo
-é que há implementações muito mais testadas e examidadas que
-esta. Aqui não estamos nos preocupando com detalhes como ataques de
-canais laterais ou coisas que são importantes para usos sérios da
-criptografia, então pode ser que a implementação aqui feita tenha
-falhas de segurança. A ideia de implementar esta função é apenas
-garantir uma alternativa de gerador para aqueles que querem uma
-qualidade de geração muito maior que o normal, mesmo que tenham que
-pagar caro em performance para isso.
+O ChaCha20 é um gerador projetado para ser criptograficamente seguro,
+mas essa afirmação só é verdadeira se ele for alimentado com ua
+semente com um tamanho adequado, e se a semente realmente for obtida
+de maneira aleatória e uniforme e sem que ela seja reaproveitada
+novamente. Nossa API não garante tais coisas, aqui não estamos
+interessados em geradores criptograficamente seguros. Para nós o
+CHaCha20 será apenas um gerador como todos os outros anteriores, com o
+diferencial de que espera-se que ele tenha uma qualidade maior com um
+maior custo em desempenho para compensar.
 
-O ChaCha20 tem como primeiro componente de seu funcionamento uma
+O algoritmo tem como primeiro componente de seu funcionamento uma
 função de preenchimento, que receberá como entrada 384 bits (a serem
 interpretados como separados em componentes de 64 bits) e gera como
 saída 512 bits. A ideia é que a saída seja interpretada como uma
 matriz $4\times 4$ de elementos de 32 bits, mesmo que não a
-armazenemos neste formato:
+armazenemos neste formato.
+
+A função de preenchimento é:
 
 @<ChaCha20: Preenchimento@>=
 #ifdef W_RNG_CHACHA20
@@ -1306,23 +1303,22 @@ expenctativa de que a qualidade é mantida com uma semente reduzida
 #ifdef W_RNG_CHACHA20
 struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
                            uint64_t *seed){
-  int i;
+  int i, j;
   struct _Wrng *rng = (struct _Wrng *) allocator(sizeof(struct _Wrng));
   if(rng != NULL){
     for(i = 0; i < 4; i ++){
-      if(i < size)
+      if(i < size - 1 || size >= 4)
         rng -> array[i] = seed[i];
       else{
-        if(i == 0)
-          rng -> array[i] = 0;
-        else{
-          uint64_t z;
-          rng -> array[i - 1] += 0x9e3779b97f4a7c15; 
-          z = rng -> array[i - 1];
-          z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9;
-          z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
-          rng -> array[i] = z ^ (z >> 31);
-        }
+        // Using SplitMix to fill the remaining values
+        uint64_t state, gamma = 0x9e3779b97f4a7c15;
+        if(size > 0)
+          state = seed[i];
+        else
+          state = 0x32147198b5436569;
+        for(j = i; j < 4; j ++)
+          rng -> array[j] = splitmix_next(&state, gamma);
+        break;        
       }
     }
     rng -> array[4] = 0;

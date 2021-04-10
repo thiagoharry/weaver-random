@@ -12,7 +12,7 @@ extern"C"{
 #include <pthread.h> 
 #endif
 /*51:*/
-#line 1890 "weaver-random.tex"
+#line 1886 "weaver-random.tex"
 
 #if !defined(W_RNG_MERSENNE_TWISTER) && !defined(W_RNG_XOSHIRO) && \
 !defined(W_RNG_PCG) && !defined(W_RNG_LCG) && !defined(W_RNG_CHACHA20) && \
@@ -68,7 +68,7 @@ CRITICAL_SECTION mutex;
 };
 #endif
 /*:16*//*26:*/
-#line 797 "weaver-random.tex"
+#line 798 "weaver-random.tex"
 
 #ifdef W_RNG_SPLITMIX
 struct _Wrng{
@@ -83,12 +83,12 @@ pthread_mutex_t mutex;
 CRITICAL_SECTION mutex;
 #endif
 /*:7*/
-#line 801 "weaver-random.tex"
+#line 802 "weaver-random.tex"
 
 };
 #endif
 /*:26*//*30:*/
-#line 880 "weaver-random.tex"
+#line 881 "weaver-random.tex"
 
 #ifdef W_RNG_XOSHIRO
 struct _Wrng{
@@ -103,12 +103,12 @@ pthread_mutex_t mutex;
 CRITICAL_SECTION mutex;
 #endif
 /*:7*/
-#line 884 "weaver-random.tex"
+#line 885 "weaver-random.tex"
 
 };
 #endif
 /*:30*//*36:*/
-#line 1023 "weaver-random.tex"
+#line 1024 "weaver-random.tex"
 
 #ifdef W_RNG_PCG
 #ifdef __SIZEOF_INT128__
@@ -125,7 +125,7 @@ pthread_mutex_t mutex;
 CRITICAL_SECTION mutex;
 #endif
 /*:7*/
-#line 1029 "weaver-random.tex"
+#line 1030 "weaver-random.tex"
 
 };
 #else
@@ -133,7 +133,7 @@ CRITICAL_SECTION mutex;
 #endif
 #endif
 /*:36*//*45:*/
-#line 1270 "weaver-random.tex"
+#line 1267 "weaver-random.tex"
 
 #ifdef W_RNG_CHACHA20
 struct _Wrng{
@@ -150,7 +150,7 @@ pthread_mutex_t mutex;
 CRITICAL_SECTION mutex;
 #endif
 /*:7*/
-#line 1276 "weaver-random.tex"
+#line 1273 "weaver-random.tex"
 
 };
 #endif
@@ -179,28 +179,28 @@ struct _Wrng*_Wcreate_rng(void*(*alloc)(size_t),size_t size,uint64_t*seed);
 #define _W_RNG_MAXIMUM_RECOMMENDED_SEED_SIZE  312
 #endif
 /*:22*//*29:*/
-#line 856 "weaver-random.tex"
+#line 857 "weaver-random.tex"
 
 #ifdef W_RNG_SPLITMIX
 #define _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE  1
 #define _W_RNG_MAXIMUM_RECOMMENDED_SEED_SIZE  2
 #endif
 /*:29*//*35:*/
-#line 994 "weaver-random.tex"
+#line 995 "weaver-random.tex"
 
 #ifdef W_RNG_XOSHIRO
 #define _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE  1
 #define _W_RNG_MAXIMUM_RECOMMENDED_SEED_SIZE  4
 #endif
 /*:35*//*41:*/
-#line 1164 "weaver-random.tex"
+#line 1165 "weaver-random.tex"
 
 #ifdef W_RNG_PCG
 #define _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE  2
 #define _W_RNG_MAXIMUM_RECOMMENDED_SEED_SIZE  4
 #endif
 /*:41*//*46:*/
-#line 1289 "weaver-random.tex"
+#line 1286 "weaver-random.tex"
 
 #ifdef W_RNG_CHACHA20
 #define _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE  4
