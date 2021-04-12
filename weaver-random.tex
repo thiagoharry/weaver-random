@@ -1402,15 +1402,18 @@ O arquivo com o código-fonte de nossas funções terá a seguinte forma:
 
 Como forma de testar a qualidade de todos os algoritmos fornecidos e
 fazer comparações, fazemos alguns testes estatísticos empíricos
-sugeridos em [Knuth, 1998]. Uma ressalva é que muitos dos testes
-sugeridos lá presume o desejo de gerar números aleatórios entre 0 e um
-valor $n$, ou então valores reais entre 0 e 1. Contudo, se assumirmos
-isso acabaremos dando um peso maior para os bits mais significativos
-gerados. Mas queremos garantir a qualidade mínima dele para todos os
-bits. Desta forma, buscamos em diferentes testes tratar os valores
-gerados como uma sequência de bits (não de números de 64 bits), e
-escolhemos de maneira arbitrária, mas diferente em cada um dos testes,
-escolher um tamanho em bits diferente para cada valor gerado.
+sugeridos em [Knuth, 1998]. Eles são um conjunto de testes iniciais,
+mas mais testes podem ser adicionados à esta seção futuramente.
+
+Uma ressalva é que muitos dos testes sugeridos lá presume o desejo de
+gerar números aleatórios entre 0 e um valor $n$, ou então valores
+reais entre 0 e 1. Contudo, se assumirmos isso acabaremos dando um
+peso maior para os bits mais significativos gerados. Mas queremos
+garantir a qualidade mínima dele para todos os bits. Desta forma,
+buscamos em diferentes testes tratar os valores gerados como uma
+sequência de bits (não de números de 64 bits), e escolhemos de maneira
+arbitrária, mas diferente em cada um dos testes, escolher um tamanho
+em bits diferente para cada valor gerado.
 
 Em todos os testes, aplicamos um teste como o Chi-Quadrado como
 sugerido na referência [Knuth, 1998]. Repetimos as medidas 3 vezes, se
@@ -1560,6 +1563,10 @@ Sucesso\hidewidth&&
 &&PCG&&92\%&&\monoespaco{LCG}&&00\%&\cr\linha
 &&ChaCha20&&92\%&&SplitMix64&&93\%&\cr\linha}}
 
+Este é o primeiro teste no qual um de nossos algoritmos falha. O LCG
+produz resultdos que são idealizados demais para serem considerados
+aleatórios.
+
 \subsecao{3.6. Teste da Permutação}
 
 Este teste consiste em gerar números entre 0 e 7, ignorando valores
@@ -1676,14 +1683,12 @@ Sucesso\hidewidth&&
 Neste teste nós geramos um número $n=512$ de valores de 25 bits. Em
 seguida, os ordenamos e medimos a diferença entre valores
 sucessivos. E contamos o número de distâncias iguais que
-encontramos. Este teste foi sugerido por George Marsaglia e quando
-proposto encontrou falhas em geradores que passavam nos testes
-estatísticos existentes na época.
+encontramos. O resultado é comparado com o esperado em sequências
+aleatórias.
 
-Nós fazemos o teste acima um total de mil vezes e comparamos o a
-distribuição de espaçaments repetidos com o que seria
-esperado. Aplicamos então o teste do Chi-Quadrado e por fim repetimos
-tudo isso cerca de 3000 vezes para obter a porcentagem de sucesso.
+Este teste foi sugerido por George Marsaglia e quando proposto
+encontrou falhas em geradores que passavam nos testes estatísticos
+existentes na época.
 
 Nosso resultado foi:
 
@@ -1740,7 +1745,43 @@ Sucesso\hidewidth&&
 &&PCG&&93\%&&\monoespaco{LCG}&93\%&\cr\linha
 &&ChaCha20&&93\%&&SplitMix64&&93\%&\cr\linha}}
 
-\subsecao{3.12. Conclusão dos Testes}
+\subsubsecao{3.12. Generating all 32-bit values}
+
+Este teste difere dos anteriores porque ao contrário de obter uma
+porcentagem de sucesso, nós estamos interessados se é possível gerar
+todos os números de 32 bits diferentes com nossos geradores se eles
+executarem por tempo suficiente. Se for possível, estamos interessados
+na quantidade de valores que precisaram ser gerados até termos todos
+os possíveis. Consideramos que um gerador falha se ele não for capaz
+de gerar algum valor.
+
+Nosso resultado é:
+
+\vbox{%A forma mais gseral de remover espaçamento entre linhas:
+\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
+\def\linha{\noalign{\hrule}}
+\def\hidewidth{\hskip-1000pt plus 1fill}
+\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
+\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
+\hfil#& \vrule#& \hfil#\hfil& \vrule#&
+\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
+&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+Sucesso\hidewidth&&
+\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+&&SFMT&&98852849277&&Xoshiro**&&92842427748&\cr\linha
+&&PCG&&100979563727&&\monoespaco{LCG}&8589934581&\cr\linha
+&&ChaCha20&&99686167785&&&&&\cr\linha}}
+
+Todos os algoritmos conseguiram gerar todos os valores de 32 bits
+diferentes e o número de tentativas foi similar, exceto pelo LCG. O
+número de valores gerados pelo LCG foi baixo demais, praticamente
+metade dos valores retornados eram valores novos, não repetidos. Assim
+como o teste do colecionador, isso mostra um viés conhecido deste
+gerador de evitar produzir valores repetidos.
+
+
+
+\subsecao{3.13. Conclusão dos Testes}
 
 O único algoritmo que notavelmente falha em um dos testes é o Gerador
 Linear Congruente. Mesmo sendo construído por parâmetros testados como
