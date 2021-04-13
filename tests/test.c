@@ -15,12 +15,18 @@
 
 #include "../src/random.h"
 
+//#define SINGLE_SEED
+
 int numero_de_testes = 0, acertos = 0, falhas = 0;
 
 /* SEED TESTED */
+#if defined(SINGLE_SEED)
+uint64_t seed[] = {0x9547df38bb612d06};
+#else
 uint64_t seed[] = {
-  0x32147198b5436569, 0x260287febfeb34e9, 0x0b6cc94a91a265e4, 0xc6a109c50dd52f1b,
-  0x8298497f3992d73a};
+		   0x32147198b5436569, 0x260287febfeb34e9, 0x0b6cc94a91a265e4,
+		   0xc6a109c50dd52f1b, 0x8298497f3992d73a};
+#endif
 size_t seed_size = sizeof(seed) / 8;
 
 #ifdef W_RNG_MERSENNE_TWISTER
@@ -34,11 +40,11 @@ size_t seed_size = sizeof(seed) / 8;
 
 uint64_t rng_value;
 int rng_bit, rng_bits = 0;
-int read_random_bits(struct _Wrng *my_rng, int size_in_bits){
-  int result = 0;
+uint64_t read_random_bits(struct _Wrng *my_rng, int size_in_bits){
+  uint64_t result = 0;
   if(rng_bits == 0){// Need to generate next random bits
     rng_value = _Wrand(my_rng);
-    result = rng_value % (1 << size_in_bits);
+    result = rng_value % (1llu << size_in_bits);
     rng_value = rng_value >> (size_in_bits);
     rng_bits = 64 - size_in_bits;    
   }
@@ -46,12 +52,12 @@ int read_random_bits(struct _Wrng *my_rng, int size_in_bits){
     result = rng_value;
     result = result << (size_in_bits - rng_bits);
     rng_value = _Wrand(my_rng);
-    result += rng_value % (1 << (size_in_bits - rng_bits));
+    result += rng_value % (1llu << (size_in_bits - rng_bits));
     rng_value = rng_value >> (size_in_bits - rng_bits);
     rng_bits = 64 - (size_in_bits - rng_bits);
   }
   else{ // We still have remaining random bits, dont generate more
-    result = rng_value % (1 << size_in_bits);
+    result = rng_value % (1llu << size_in_bits);
     rng_value = rng_value >> (size_in_bits);
     rng_bits -= size_in_bits;    
   }
@@ -272,7 +278,7 @@ void test_xorshiro(void){
 }
 #endif
 
-#if defined(W_RNG_PCG)
+#if defined(W_RNG_PCG) && !defined(SINGLE_SEED)
 void test_pcg(void){
   bool equal = true;
   int i;
@@ -360,6 +366,40 @@ uint32_t reverse(uint32_t x){
   x = ((x & 0x00FF00FF) << 8) | ((x & 0xFF00FF00) >> 8); // Swap ...
   x = ((x & 0x0000FFFF) << 16) | ((x & 0xFFFF0000) >> 16); // Swap ...
   return x;
+}
+
+void test_all32(void){
+  bool passed = true;
+  uint64_t i;
+  static uint8_t values[536870912llu]; // 2^n / 8
+  uint64_t count = 0, iter = 0;
+  struct _Wrng *my_rng = _Wcreate_rng(malloc, seed_size, seed);
+  for(i = 0; i < 536870912llu; i ++) // 2^n / 8
+    values[i] = 0;
+  for(;;){
+    uint32_t value = read_random_bits(my_rng, 32); // n
+    //printf("%llu\n", (unsigned long long) value);
+    uint32_t position = value / 8, bit = value % 8;
+    iter ++;
+    if((values[position] & (1 << bit))  == 0){
+      values[position] |= (1 << bit);
+      count ++;
+      if(count >= 4294967296llu) // 2^n
+	break;
+      if(iter > 300000000000llu){
+	passed = false;
+	break;
+      }
+    }
+    //if(iter % 10000000000llu == 0)
+    //  printf("Count: %llu/4294967296  Iter: %llu\n",
+    //	     (unsigned long long) count,
+    //	     (unsigned long long) iter);
+  }
+  //printf("Found all values after %llu iteractions\n",
+  //	 (unsigned long long) iter);
+  assert("RNG can produce all 32-bit numbers", passed);
+  _Wdestroy_rng(free, my_rng);
 }
 
 void test_equidistribution(void){
@@ -974,11 +1014,12 @@ int main(int argc, char **argv){
 	 _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE,
 	 _W_RNG_MAXIMUM_RECOMMENDED_SEED_SIZE);
   measure_time();
+  test_all32();
 #if defined(W_RNG_MERSENNE_TWISTER)
   test_mersenne_twister();
 #elif defined(W_RNG_XOSHIRO)
   test_xorshiro();
-#elif defined(W_RNG_PCG)
+#elif defined(W_RNG_PCG) && !defined(SINGLE_SEED)
   test_pcg();
 #endif
 #if !defined(__EMSCRIPTEN__)
