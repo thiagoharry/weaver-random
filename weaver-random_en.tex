@@ -1714,34 +1714,22 @@ new numbers, not repeated values. Like the collector test, this shows
 the known bias in LCG generators about not repeating previously
 generated values.
 
-\subsecao{3.13. Conclusão dos Testes}
+\subsecao{3.13. Test Conclusion}
 
-O único algoritmo que notavelmente falha em um dos testes é o Gerador
-Linear Congruente. Mesmo sendo construído por parâmetros testados como
-tendo uma quaidade maior, ele falha no Teste do Colecionador. Para um
-algoritmo a ser usado em jogos, isso é bastante ruim. É possível que
-existam itens colecionáveis em um jogo que possam ser obtidos de
-maneira aleatória. Mas usando o LCG, os itens são obtidos com um
-número de tentativas diferente do que seria esperado se fôsse algo
-aleatório.
+We managed to produce tests that find problems for the LCG
+algorithm. The result indicate a bias in that RNG against producing
+repeated values.
 
-Entretanto, analizando o teste, o LCG falha não por apresentar
-resultados muito distorcidos neste teste, mas sim por apresentar
-resultado idealizado demais. Dependendo da intenção desejada, isso
-pode não ser um impeditivo para usá-lo.
+\secao{4. Benchmarks}
 
+To measure the performance for each algorithm, we produced 100
+millions 64-bit numbers. To avoid compiler optimizations, we used each
+result in a sum. We tested the time spent in 4 different environments
+and 2 different computers.
 
-\secao{4. Medida de Desempenho}
-
-
-Para medir o desempenho de cada gerador, pedimos para cada um deles
-gerar sequencialmente um total de 100 milhões de números aleatórios de
-64 bits. O teste foi feito em um computador com processador Intel
-Pentium B980 dual core com 2,40 GHz e 4 GB de memória RAM. O Sistema
-Operacional foi o Open BSD 6.7. O teste foi compilado com o Clang
-8.0.1.
-
-O resultado em segundos foi:
+The following test (with result in seconds) is the result of running
+the test in OpenBSD 6.7 using computer A (Intel Pentium B980 dual
+core, 2,40 GHz, 4 GB RAM) and compiler Clang 8.0.1:
 
 \vbox{%A forma mais gseral de remover espaçamento entre linhas:
 \baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
@@ -1754,34 +1742,14 @@ O resultado em segundos foi:
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
 Tempo (s)\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Tempo (s)&\cr\linha
-&&SFMT&&9.386125&&Xoshiro**&&7.703922&\cr\linha
-&&PCG&&7.589271&&\monoespaco{LCG}&7.328776&\cr\linha
-&&ChaCha20&&10.278860&&&&&\cr\linha}}
+&&SFMT&&9.571183&&Xoshiro**&&7.811493&\cr\linha
+&&PCG&&8.133946&&\monoespaco{LCG}&7.411282&\cr\linha
+&&ChaCha20&&10.498551&&SplitMix64&7.529885&&\cr\linha}}
 
-Fazendo os testes no mesmo computador, mas usando o Windows 10 e
-compilando com o compilador padrão do Visual Studio (que não suporta
-variáveis de 128 bits e por isso não pode executar nosso código do PCG
-e Mersenne Twister), obtivemos como resultado:
-
-\vbox{%A forma mais gseral de remover espaçamento entre linhas:
-\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
-\def\linha{\noalign{\hrule}}
-\def\hidewidth{\hskip-1000pt plus 1fill}
-\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
-\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
-\hfil#& \vrule#& \hfil#\hfil& \vrule#&
-\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
-&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
-Tempo (s)\hidewidth&&
-\omit\hidewidth Gerador\hidewidth&&Tempo (s)&\cr\linha
-&&SFMT&&-&&Xoshiro**&&4.415854&\cr\linha
-&&PCG&&-&&\monoespaco{LCG}&3.810040&\cr\linha
-&&ChaCha20&&7.9733357&&&&&\cr\linha}}
-
-Repetindo os testes em um outro computador mais novo, um Intel
-i5-3210M quad core com 2,50GHz e também 4 GB de memória RAM, e desta
-vez utilizando um Ubuntu 20.04.2 e um compilador GCC 9.3.0, o
-resultado foi:
+Repeating these tests using the same computer, but Windows 10 and
+compiling with Visual Studio (which does not support 128-bit
+variables, and cannot compile our implementation for PCG and Mersenne
+Twister), we get the following result:
 
 \vbox{%A forma mais gseral de remover espaçamento entre linhas:
 \baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
@@ -1794,17 +1762,13 @@ resultado foi:
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
 Tempo (s)\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Tempo (s)&\cr\linha
-&&SFMT&&2.683414&&Xoshiro**&&2.526265&\cr\linha
-&&PCG&&2.266165&&\monoespaco{LCG}&2.360528&\cr\linha
-&&ChaCha20&&7.053677&&&&&\cr\linha}}
+&&SFMT&&-&&Xoshiro**&&4.570623&\cr\linha
+&&PCG&&-&&\monoespaco{LCG}&3.615481&\cr\linha
+&&ChaCha20&&8.019865&&SplitMix64&4.340963&&\cr\linha}}
 
-Neste cenário, as diferenças entre todos os outros algoritmos e o
-ChaCha20 se tornaram ainda mais evidentes. E de forma interessante, o
-PCG apresentou um desempenho ligeiramente melhor que o LCG.
-
-Usando o mesmo computador, mas compilando usando o Emscripten 2.0.14
-para produzir Web Assembly e executar em uma página de Internet no
-navegador  Firefox 86.0, o resultado foi:
+Repeating the test in a second newer computer, a Intel i5-3210M quad
+core with 2,50GHz and 4 GB RAM, running Ubuntu 20.04.2 and compiling
+with GCC 9.3.0, our result is:
 
 \vbox{%A forma mais gseral de remover espaçamento entre linhas:
 \baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
@@ -1817,15 +1781,39 @@ navegador  Firefox 86.0, o resultado foi:
 &&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
 Tempo (s)\hidewidth&&
 \omit\hidewidth Gerador\hidewidth&&Tempo (s)&\cr\linha
-&&SFMT&&1.272&&Xoshiro**&&0.445&\cr\linha
-&&PCG&&1.299&&\monoespaco{LCG}&0.344&\cr\linha
-&&ChaCha20&&3.638&&&&&\cr\linha}}
+&&SFMT&&2.848333&&Xoshiro**&&2.565788&\cr\linha
+&&PCG&&2.292101&&\monoespaco{LCG}&2.378609&\cr\linha
+&&ChaCha20&&7.085438&&SplitMix64&2.437079&&\cr\linha}}
 
-Chama a atenção como o desempenho foi mais rápido compilando e
-executando desta forma que da forma anterior, quando o código
-executava nativamente. Outra informação interessante é que neste
-ambiente o Xoshiro consegue um desempenho bem melhor que o PCG, que
-parece ter uma grande penalidade de desempenho quando executado assim.
+The most surprising result is PCG being faster than a linear
+congruential generator. This is very unexpected, as PCG uses
+internally a LCG. This is also the only case in which PCG run faster
+than Xoshiro** and SplitMix64. The result is not much different when
+compiling with Clang 10.0 in the same system.
+
+Using the same computer, but compiling using Emscripten 2.0.14 to
+produce Web Assembly and and executing the code in the browser 
+Firefox 86.0, the result is:
+
+\vbox{%A forma mais gseral de remover espaçamento entre linhas:
+\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
+\def\linha{\noalign{\hrule}}
+\def\hidewidth{\hskip-1000pt plus 1fill}
+\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
+\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
+\hfil#& \vrule#& \hfil#\hfil& \vrule#&
+\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
+&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+Tempo (s)\hidewidth&&
+\omit\hidewidth Gerador\hidewidth&&Tempo (s)&\cr\linha
+&&SFMT&&1.318&&Xoshiro**&&0.460&\cr\linha
+&&PCG&&1.324&&\monoespaco{LCG}&0.349&\cr\linha
+&&ChaCha20&&3.687&&SplitMix64&0.393&&\cr\linha}}
+
+The surprising result is how faster this runs when compared with
+native code. Other than that, implementations which use 128-bit
+numbers appear to have a worse performance in this environment.
+
 
 \secao{5. Conclusão: Escolhendo o Algoritmo Padrão}
 

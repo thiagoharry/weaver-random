@@ -12,7 +12,7 @@ extern"C"{
 #include <pthread.h> 
 #endif
 /*51:*/
-#line 1886 "weaver-random.tex"
+#line 1918 "weaver-random.tex"
 
 #if !defined(W_RNG_MERSENNE_TWISTER) && !defined(W_RNG_XOSHIRO) && \
 !defined(W_RNG_PCG) && !defined(W_RNG_LCG) && !defined(W_RNG_CHACHA20) && \
