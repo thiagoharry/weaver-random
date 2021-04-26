@@ -23,9 +23,12 @@ int numero_de_testes = 0, acertos = 0, falhas = 0;
 #if defined(SINGLE_SEED)
 uint64_t seed[] = {0x9547df38bb612d06};
 #else
-uint64_t seed[] = {
+/*uint64_t seed[] = {
 		   0x32147198b5436569, 0x260287febfeb34e9, 0x0b6cc94a91a265e4,
-		   0xc6a109c50dd52f1b, 0x8298497f3992d73a};
+		   0xc6a109c50dd52f1b, 0x8298497f3992d73a};*/
+uint64_t seed[] = {
+		   0x96733f97cfb52bdc, 0x2643b9a2cd4b93c9, 0x410ee57c3fabaa43,
+		   0x5bc4beab37bbb448, 0x30684004d42215b2};
 #endif
 size_t seed_size = sizeof(seed) / 8;
 
@@ -391,13 +394,13 @@ void test_all32(void){
 	break;
       }
     }
-    //if(iter % 10000000000llu == 0)
-    //  printf("Count: %llu/4294967296  Iter: %llu\n",
-    //	     (unsigned long long) count,
-    //	     (unsigned long long) iter);
+    if(iter % 10000000000llu == 0)
+      printf("Count: %llu/4294967296  Iter: %llu\n",
+    	     (unsigned long long) count,
+    	     (unsigned long long) iter);
   }
-  //printf("Found all values after %llu iteractions\n",
-  //	 (unsigned long long) iter);
+  printf("Found all values after %llu iteractions\n",
+  	 (unsigned long long) iter);
   assert("RNG can produce all 32-bit numbers", passed);
   _Wdestroy_rng(free, my_rng);
 }
@@ -1014,7 +1017,9 @@ int main(int argc, char **argv){
 	 _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE,
 	 _W_RNG_MAXIMUM_RECOMMENDED_SEED_SIZE);
   measure_time();
+#if !defined(__EMSCRIPTEN__)
   test_all32();
+#endif
 #if defined(W_RNG_MERSENNE_TWISTER)
   test_mersenne_twister();
 #elif defined(W_RNG_XOSHIRO)
