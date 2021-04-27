@@ -40,7 +40,7 @@
 
 \twelve
 \vskip12pt
-\titulo{Gerador de Números Aleatórios Weaver}
+\titulo{Weaver Random Number Generator}
 \vskip12pt
 \autor{Thiago Leucz Astrizi}
 \vskip6pt
@@ -93,14 +93,14 @@ them. Some randomness also can make screen transitions more
 interesting.
 
 e) Entertainment: The fun of a game could be entirely in the
-randomness. This is the case for games involving dices, roulettes,
+randomness. This is the case for games involving dices, roulette,
 shuffling cards.
 
 With so many different use cases for random number generators in
 games, we really need a general purpose random number generator. Never
-a generatos specialized only in some of the abose use cases.
+a generator specialized only in some of the above use cases.
 
-Usually we have a greater tollerance when a random number generator
+Usually we have a greater tolerance when a random number generator
 produces predictable results in a game. Lots of old games used in the
 past generators that consisted in a sequence of fixed numbers, and the
 bias in such games was not apparent. But there are cases when the
@@ -177,17 +177,17 @@ will be inserted in the place of the red text in the code above.
 Our RNG API will have three different functions.
 
 The first one generates and initializes a random number generator
-returning a poiter for it. To initialize it, we will require a memory
+returning a pointer for it. To initialize it, we will require a memory
 allocation function (can be \monoespaco{malloc} from standard library,
 or a custom memory allocator). Next we need a seed represented as an
 array size and an array of 64-bit integers that we will assume being
 chosen uniformly at random.
 
 This way, our initialization function is generic enough that the user
-can use a personalized ammount of entropy for the generator. In a
+can use a personalized amount of entropy for the generator. In a
 shuffling card game, for example, if we want to shuffle 54 cards, we
 would want in the initialization a number of $n$ random bits such that
-$2^n$ is not much smaller than $54!$. Othewise, we surely will not be
+$2^n$ is not much smaller than $54!$. Otherwise, we surely will not be
 able to generate most of the possible shuffling. However, in some
 machines and environment, getting randomness could be difficult and we
 should be able to pass a smaller number of random bits during
@@ -223,11 +223,11 @@ uint64_t _Wrand(struct _Wrng *);
 \fimcodigo
 
 And the last function will finalize the random number generator. It
-receives a pointer for the disallocation function or NULL. If the
+receives a pointer for the dis-allocation function or NULL. If the
 function gets NULL as first argument, the random number generator will
-not be disallocated (some memory managers could use some kind of
+not be dis-allocated (some memory managers could use some kind of
 garbage collection instead of a \monoespaco{free} function). But even
-if not disallocated, the random number generator should not be used
+if not dis-allocated, the random number generator should not be used
 after being finalized with this function:
 
 \iniciocodigo
@@ -236,7 +236,7 @@ bool _Wdestroy_rng(void (*free)(void *), struct _Wrng *);
 @
 \fimcodigo
 
-\subsecao{1.4. Suporte à Threads}
+\subsecao{1.4. Supporting Threads}
 
 The code in this section will ensure that more than one thread can use
 our random number generator after its initialization. First we need
@@ -350,7 +350,7 @@ modulo operation.
 
 About the multiplier $a$, we will use the value 0xfa346cbfd5890825
 because this is one of the values suggested in the article [Steele,
-2021] that examined rhe quality of different parameters for this kind
+2021] that examined the quality of different parameters for this kind
 of generator.
 
 About the value $c$, we need to ensure that it will be an odd integer
@@ -359,12 +359,12 @@ can choose any possible odd number. The initial value also need to be
 an odd integer.
 
 To ensure this, we can use the first 64 bits of our seed to initialize
-$x_0$ after force the least significative bit to 1. If we have more
+$x_0$ after force the least significant bit to 1. If we have more
 64-bit numbers in the seed, we can use it as our $c$, also setting to
-1 the least significative bit. Otherwise, we just use $c=1$.
+1 the least significance bit. Otherwise, we just use $c=1$.
 
 
-Ths means that the recommended size for our seed is 1 or 2 numbers
+This means that the recommended size for our seed is 1 or 2 numbers
 with 64 bits:
 
 \iniciocodigo
@@ -440,7 +440,7 @@ period are very big mersenne primes (with the form $2^n-1$). The most
 used implementation of this algorithm have periods of $2^{199937}-1$
 different values without repetitions. This is more than enough (and
 even an exaggeration) for any use case. And ``SIMD'' is an instruction
-set for vectorizing 128-bit integers that more recet CPUs
+set for vectorizing 128-bit integers that more recent CPUs
 support. These instructions are expected to make the algorithm run
 faster, if the compiler is smart enough to use it, or if we use them
 explicitly in assembly.
@@ -470,9 +470,9 @@ store and multiply it explicitly. We can represent the multiplication
 of the matrix by a vector using a compact number of operations.
 
 In the struct for our generator, we need to store all the previous
-neccessary values and also an offset, that stores the position of the
+necessary values and also an offset, that stores the position of the
 next 64-bit value to be returned. If the offset is even, we assume
-that we neet to generate a new value. In the even case, we generate a
+that we need to generate a new value. In the even case, we generate a
 new 128 bit value and return the first 64 bits. In the odd case, we
 still have the remaining 64 bits of the last value and do not need to
 generate a new one.
@@ -713,7 +713,7 @@ Except that for performance reasons, instead of using a full hash
 function, we use a bit mixer: a component that is part of some hash
 functions and is responsible for avoid correlations between similar
 input values. The bit mixer used for SplitMix64 is the one defined
-originally for a hash function caled MurmurHash3:
+originally for a hash function called MurmurHash3:
 
 \iniciocodigo
 @<SplitMix: Bit Mixer@>=
@@ -915,7 +915,7 @@ uint64_t _Wrand(struct _Wrng *rng){
 
 Finally, we need to initialize Xoshiro**. If the seed have 256 bits or
 more, we copy the bits from the seed to the RNG state. If we have
-less, we copywhat we have and use the last 64 bits to initialize
+less, we copy what we have and use the last 64 bits to initialize
 SplitMix64 state using the default gamma value and produce the
 remaining bits using the SplitMix generator:
 
@@ -971,7 +971,7 @@ the output.
 
 The simple transformation in the state, in SplitMix means adding a
 constant to the internal state. But in PCG, we update the internal
-state applying a linear congruent generrator (LCG) like the one from
+state applying a linear congruent generator (LCG) like the one from
 subsection 2.1.
 
 However, that linear congruent generator was defined using 64
@@ -1050,13 +1050,13 @@ uint64_t _Wrand(struct _Wrng *rng){
 What remains to be done is initialize the initial state. If we pass a
 big seed, with 256 bits or more, we could use it directly to fill the
 internal state. Instead, we mix them in a more complicated way to
-match the reference implementation that tries to deal with not so
-random initializations.
+match the reference implementation that tries to deal with seeds that
+are not much random.
 
 If we pass a seed with at least 128 bits, we use it directly to
 initialize the initial state and we set the increment of our internal
 LCG as 1. If we have 192 bits, we can use them to initialize to
-diffferent values in our increment. And if we have less than 128 bits,
+different values in our increment. And if we have less than 128 bits,
 we use SplitMix to stretch our initial random bits to 128. The
 initialization function is defined as below:
 
@@ -1129,12 +1129,12 @@ to avoid needing to stretch the initial randomness with SplitMix:
 
 \subsecao{2.6. ChaCha20}
 
-ChaCha20 is a criptographically secure random number generator, but
+ChaCha20 is a cryptographic secure random number generator, but
 this affirmation is only true if it is used correctly: the seed must
 have a sufficiently large size, it should be chosen in a completely
-random and uniform way and it never should be reutilized again after
+random and uniform way and it never should be utilized again after
 the use. Our API does not guarantee these things, here we are not
-concerned with cryptographically secure random number generators. For
+concerned with cryptographic ally secure random number generators. For
 us, ChaCha20 will be only another RNG like the previous ones. The
 difference is that it is expected to have a greater quality at the
 cost of being slower.
@@ -1166,7 +1166,7 @@ static void chacha_padding(uint64_t input[6], uint32_t output[16]){
 In the input for this padding function, the first 4 values are taken
 from the initial seed, The next value is a counter initialized as 0
 and incremented each time the generator produces a new set of
-numbers. The last value is a nounce, a number that should be used only
+numbers. The last value is a nonce, a number that should be used only
 once.
 
 The next component is the function below that gets 4 values as 32-bit
@@ -1239,7 +1239,7 @@ struct _Wrng{
 When this struct is allocated, the first 4 values in our 6-element
 array are copied from the seed, the next one is filled with 0 and the
 last one also is taken from the seed, but if it do not exist, we can
-use 0 (this is the nounce that identify the produced sequence for a
+use 0 (this is the nonce that identify the produced sequence for a
 given initial seed). This means that our seed in our API should have
 between 4 and 5 values:
 
@@ -1253,7 +1253,7 @@ between 4 and 5 values:
 \fimcodigo
 
 If we have less values we will use the SplitMix algorithm to produce
-the remaining values, except for the nounce that we can keep with
+the remaining values, except for the nonce that we can keep with
 0. Our initialization function is given below.
 
 \iniciocodigo
@@ -1294,7 +1294,7 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
 \fimcodigo
 
 To produce new values, first we need to check if we still have
-generated bits that still were not returned. Each time ChaCHa20
+generated bits that still were not returned. Each time ChaCha20
 produces new values, it produces 16 numbers with 32 bits. This means
 that we can use it as 8 numbers with 64 bits. When we do not need to
 produce new values, we proceed as below:
@@ -1340,9 +1340,9 @@ following code:
 }
 @
 
-\subsecao{2.6. Estrutura Final do Arquivo}
+\subsecao{2.6. Final Structure in File}
 
-The file with th source code of our functions will have the following
+The file with the source code of our functions will have the following
 structure:
 
 \iniciocodigo
@@ -1364,10 +1364,10 @@ them, we implemented the empirical tests proposed in [Knuth,
 1998]. They are our initial set of tests, but more tests could be
 implemented and added to this work later.
 
-A caveat is that lots of tests seggested by Knuth assume that we are
+A caveat is that lots of tests suggested by Knuth assume that we are
 generating random numbers between 0 and $n$ or real numbers between 0
 and 1. But for many tests this gives more weight to the more
-significative bits of a number and we want to give the same weight for
+significant bits of a number and we want to give the same weight for
 all bits. Because of this, we treat the sequence generated by our RNG
 as a stream of bits, choosing different lengths of bits in each test
 to generate our numbers.
@@ -1375,7 +1375,7 @@ to generate our numbers.
 In most tests we apply the chi-square test as suggested in [Knuth,
 1998] to test the quality and randomness of our results. We repeat
 each chi-square test three times and consider the test a failure if in
-any of them we obtain a very improbable result with a chance lesseR
+any of them we obtain a very improbable result with a chance lesser
 than 1\% of happening. If we get two times a slightly improbable
 result (probability of happening: 5\%) we also consider the test a
 failure. We repeat this triple test 1000 times. The expected result is
@@ -1389,7 +1389,7 @@ numbers. The numbers are:
 
 \subsecao{3.1. Equidistribution Test}
 
-In the most basic test we check the equidistributionjs of bits 0 and
+In the most basic test we check the equidistribution of bits 0 and
 1. The success for each algorithm is:
 
 \vbox{%A forma mais gseral de remover espaçamento entre linhas:
@@ -1432,12 +1432,12 @@ Sucesso\hidewidth&&
 \subsecao{3.3. Gap Test}
 
 This is a gap test for bits. We interpret the sequence generated by
-the RNG as asequence of bits and count the number of sequences of bits
+the RNG as a sequence of bits and count the number of sequences of bits
 0 followed by a 1. We treat them as ``gaps''.
 
 For example, in the sequence ``100110010100001'' we get the following
 gaps: ``1'' (size 0), ``001'' (size 2), ``1'' (size 0), ``001'' (size
-2), ``01'' (size 1) e ``00001'' (size 4). FOr each RNG we obtain a
+2), ``01'' (size 1) e ``00001'' (size 4). For each RNG we obtain a
 sample of $5\cdot2^{20}$ gaps and analyze the number of gaps for each
 size. We compare this with the expected result using the chi-square
 test. Our result is:
@@ -1461,7 +1461,7 @@ Sucesso\hidewidth&&
 
 Here we interpret our RNG sequence as sequences of numbers between 0
 and 15. We generate a lot of tuples with 5 elements. Then, we count
-the occurence of the following events: all values in the tuple are
+the occurrence of the following events: all values in the tuple are
 different, we found 4 equal values, we found 3 equal values, we found
 a triple and a pair of equal values, we found two pairs of equal
 values, we found a single pair of equal values. We measure how the
@@ -1491,7 +1491,7 @@ of poker, here we measure how random is the order in which the cards
 appear. We interpret our RNG sequence as a sequence of numbers between
 0 and 15. We keep generating values until we get all 16 different
 values finishing the collection. Next we count the number of generated
-values that were necessary to finish the collection. We reapeat this
+values that were necessary to finish the collection. We repeat this
 4408394 times. And check in how many of these tests we managed to
 finish the collection generating only 16 numbers, only 17 numbers, and
 so on until 116+ generated values. We compare these results with what
@@ -1517,7 +1517,7 @@ Sucesso\hidewidth&&
 This is the first test in which one of the algorithms fail. The LCG
 produces results that are too idealized to be considered random.
 
-\subsecao{3.6. Teste da Permutação}
+\subsecao{3.6. Permutation Test}
 
 Here we generate numbers between 0 and 7, discarding repeated
 values. In the end we produce a list with 8 values in some order. We
@@ -1546,11 +1546,11 @@ Sucesso\hidewidth&&
 \subsecao{3.7. Runs Up Test}
 
 Here, like in the previous test, we generate a permutation of
-elements. But instead of cunting each possible permutation, we check
+elements. But instead of counting each possible permutation, we check
 the number of ascending sequences in which each element is greater
 than the previous one.
 
-FOr this, we generated permutations with numbers between 0 and
+For this, we generated permutations with numbers between 0 and
 8192. And we counted the number of ascending sequences with size 1, 2,
 3, 4, 5, 6+ elements.
 
@@ -1573,7 +1573,7 @@ Sucesso\hidewidth&&
 
 \subsecao{3.8. Maximum of $t$ Test}
 
-Here we produce 3 numbers between 0 and 63 and choosed always the
+Here we produce 3 numbers between 0 and 63 and choose always the
 greatest value. Next we count how many times each number is chosen
 when we repeat the test and compare the result with what is expected.
 
@@ -1628,7 +1628,7 @@ Sucesso\hidewidth&&
 \subsecao{3.10. Birthday Spacing Test}
 
 Here we generate 512 different values, each one with 25 bits. Next we
-order them and measure the difference between succcessive numbers
+order them and measure the difference between successive numbers
 counting the number of equal differences found. The result is compared
 with what is expected from random sequences.
 
@@ -1652,7 +1652,7 @@ Sucesso\hidewidth&&
 &&PCG&&92\%&&\monoespaco{LCG}&92\%&\cr\linha
 &&ChaCha20&&91\%&&&&&\cr\linha}}
 
-\subsecao{3.11. Teste da Correlação Serial}
+\subsecao{3.11. Serial Correlation Test}
 
 In this test we produce 1000 numbers with 64 bits that we convert to
 numbers between 0 and 1 dividing each number by $2^{64}-1$ casting to
@@ -1704,7 +1704,7 @@ Our result is:
 \hfil#& \vrule#& \hfil#\hfil& \vrule#&
 \hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
 &&\omit\hidewidth Generator\hidewidth&&\omit\hidewidth
-Success\hidewidth&&
+Numbers generated\hidewidth&&
 \omit\hidewidth Generator\hidewidth&&Success&\cr\linha
 &&SFMT&&98852849277&&Xoshiro**&&92842427748&\cr\linha
 &&PCG&&100979563727&&\monoespaco{LCG}&8589934581&\cr\linha
@@ -1789,7 +1789,7 @@ Time (s)\hidewidth&&
 &&ChaCha20&&7.085438&&SplitMix64&2.437079&&\cr\linha}}
 
 The most surprising result is PCG being faster than a linear
-congruential generator. This is very unexpected, as PCG uses
+congruent generator. This is very unexpected, as PCG uses
 internally a LCG. This is also the only case in which PCG run faster
 than Xoshiro** and SplitMix64. The result is not much different when
 compiling with Clang 10.0 in the same system:
