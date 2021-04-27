@@ -309,8 +309,8 @@ LeaveCriticalSection(&(rng -> mutex));
 @
 \fimcodigo
 
-The main reason for needing a function to finalize the generator, the
-function \monoespaco{\_Wdestroy\_rng}, is the need to finalize the
+The main reason for a function to finalize the generator, in our case,
+the function \monoespaco{\_Wdestroy\_rng}, is the need to finalize the
 mutex. And free allocated memory if needed. As there is no other
 reason, here we already know the necessary to describe the generator
 finalization. And we can define the finalization function:
@@ -1196,6 +1196,7 @@ gets as input 16 numbers with 32 bits and transform them. Notice that
 in each iteration, the entire input is completely changed twice. As
 there are 10 iterations, we make 20 transformations in our input.
 
+\iniciocodigo
 @<ChaCha20: Permutação@>=
 #ifdef W_RNG_CHACHA20
 void chacha_permutation(uint32_t elements[16]){
@@ -1213,6 +1214,7 @@ void chacha_permutation(uint32_t elements[16]){
 }
 #endif
 @
+\fimcodigo
 
 With these prerequisites we can begin the definition of our RNG struct
 and functions for our API. Our RNG should store a vector with 6
@@ -1379,10 +1381,11 @@ result (probability of happening: 5\%) we also consider the test a
 failure. We repeat this triple test 1000 times. The expected result is
 a success of about 92.34\% in all tests.
 
-For all tests we use exactly the same seed chosen randomly:
-\monoespaco{0x32147198b5436569}, \monoespaco{0x260287febfeb34e9},
-\monoespaco{0x0b6cc94a91a265e4},
-\monoespaco{0xc6a109c50dd52f1b} and \monoespaco{0x8298497f3992d73a}.
+For all tests we use exactly the same seed with randomly chosen
+numbers. The numbers are:
+(\monoespaco{32147198b5436569}, \monoespaco{260287febfeb34e9},
+\monoespaco{0b6cc94a91a265e4},
+\monoespaco{c6a109c50dd52f1b}, \monoespaco{8298497f3992d73a}).
 
 \subsecao{3.1. Equidistribution Test}
 
@@ -1447,9 +1450,9 @@ test. Our result is:
 \halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
 \hfil#& \vrule#& \hfil#\hfil& \vrule#&
 \hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
-&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+&&\omit\hidewidth Generator\hidewidth&&\omit\hidewidth
 Sucesso\hidewidth&&
-\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+\omit\hidewidth Generator\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&92\%&&Xoshiro**&&92\%&\cr\linha
 &&PCG&&91\%&&\monoespaco{LCG}&&86\%&\cr\linha
 &&ChaCha20&&91\%&&&&&\cr\linha}}
@@ -1474,9 +1477,9 @@ Our result is:
 \halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
 \hfil#& \vrule#& \hfil#\hfil& \vrule#&
 \hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
-&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+&&\omit\hidewidth Generator\hidewidth&&\omit\hidewidth
 Sucesso\hidewidth&&
-\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+\omit\hidewidth Generator\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&92\%&&Xoshiro**&&93\%&\cr\linha
 &&PCG&&91\%&&\monoespaco{LCG}&&92\%&\cr\linha
 &&ChaCha20&&92\%&&&&&\cr\linha}}
@@ -1504,9 +1507,9 @@ The result is:
 \halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
 \hfil#& \vrule#& \hfil#\hfil& \vrule#&
 \hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
-&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+&&\omit\hidewidth Generator\hidewidth&&\omit\hidewidth
 Sucesso\hidewidth&&
-\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+\omit\hidewidth Generator\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&91\%&&Xoshiro**&&92\%&\cr\linha
 &&PCG&&92\%&&\monoespaco{LCG}&&00\%&\cr\linha
 &&ChaCha20&&92\%&&&&&\cr\linha}}
@@ -1533,9 +1536,9 @@ The result is:
 \halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
 \hfil#& \vrule#& \hfil#\hfil& \vrule#&
 \hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
-&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+&&\omit\hidewidth Generator\hidewidth&&\omit\hidewidth
 Sucesso\hidewidth&&
-\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+\omit\hidewidth Generator\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&93\%&&Xoshiro**&&92\%&\cr\linha
 &&PCG&&93\%&&\monoespaco{LCG}&&02\%&\cr\linha
 &&ChaCha20&&92\%&&&&&\cr\linha}}
@@ -1561,9 +1564,9 @@ The result is:
 \halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
 \hfil#& \vrule#& \hfil#\hfil& \vrule#&
 \hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
-&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+&&\omit\hidewidth Generator\hidewidth&&\omit\hidewidth
 Sucesso\hidewidth&&
-\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+\omit\hidewidth Generator\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&92\%&&Xoshiro**&&91\%&\cr\linha
 &&PCG&&90\%&&\monoespaco{LCG}&&90\%&\cr\linha
 &&ChaCha20&&90\%&&&&&\cr\linha}}
@@ -1584,9 +1587,9 @@ The result is:
 \halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
 \hfil#& \vrule#& \hfil#\hfil& \vrule#&
 \hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
-&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+&&\omit\hidewidth Generator\hidewidth&&\omit\hidewidth
 Sucesso\hidewidth&&
-\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+\omit\hidewidth Generator\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&92\%&&Xoshiro**&&92\%&\cr\linha
 &&PCG&&91\%&&\monoespaco{LCG}&&86\%&\cr\linha
 &&ChaCha20&&92\%&&&&&\cr\linha}}
@@ -1615,9 +1618,9 @@ The result is:
 \halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
 \hfil#& \vrule#& \hfil#\hfil& \vrule#&
 \hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
-&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+&&\omit\hidewidth Generator\hidewidth&&\omit\hidewidth
 Sucesso\hidewidth&&
-\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+\omit\hidewidth Generator\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&94\%&&Xoshiro**&&93\%&\cr\linha
 &&PCG&&94\%&&\monoespaco{LCG}&&92\%&\cr\linha
 &&ChaCha20&&93\%&&&&&\cr\linha}}
@@ -1642,9 +1645,9 @@ Our results are:
 \halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
 \hfil#& \vrule#& \hfil#\hfil& \vrule#&
 \hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
-&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+&&\omit\hidewidth Generator\hidewidth&&\omit\hidewidth
 Sucesso\hidewidth&&
-\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+\omit\hidewidth Generator\hidewidth&&Sucesso&\cr\linha
 &&SFMT&&92\%&&Xoshiro**&&92\%&\cr\linha
 &&PCG&&92\%&&\monoespaco{LCG}&92\%&\cr\linha
 &&ChaCha20&&91\%&&&&&\cr\linha}}
@@ -1675,14 +1678,14 @@ Our result is:
 \halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
 \hfil#& \vrule#& \hfil#\hfil& \vrule#&
 \hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
-&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
-Sucesso\hidewidth&&
-\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+&&\omit\hidewidth Generator\hidewidth&&\omit\hidewidth
+Success\hidewidth&&
+\omit\hidewidth Generator\hidewidth&&Success&\cr\linha
 &&SFMT&&93\%&&Xoshiro**&&93\%&\cr\linha
 &&PCG&&93\%&&\monoespaco{LCG}&93\%&\cr\linha
 &&ChaCha20&&93\%&&&&&\cr\linha}}
 
-\subsubsecao{3.12. Generating all 32-bit values}
+\subsecao{3.12. Generating all 32-bit values}
 
 This is not a test like the previous ones. Instead of a percentage, we
 are interested if our random number generator can really produce all
@@ -1700,9 +1703,9 @@ Our result is:
 \halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
 \hfil#& \vrule#& \hfil#\hfil& \vrule#&
 \hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
-&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
-Sucesso\hidewidth&&
-\omit\hidewidth Gerador\hidewidth&&Sucesso&\cr\linha
+&&\omit\hidewidth Generator\hidewidth&&\omit\hidewidth
+Success\hidewidth&&
+\omit\hidewidth Generator\hidewidth&&Success&\cr\linha
 &&SFMT&&98852849277&&Xoshiro**&&92842427748&\cr\linha
 &&PCG&&100979563727&&\monoespaco{LCG}&8589934581&\cr\linha
 &&ChaCha20&&99686167785&&&&&\cr\linha}}
@@ -1739,9 +1742,9 @@ core, 2,40 GHz, 4 GB RAM) and compiler Clang 8.0.1:
 \halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
 \hfil#& \vrule#& \hfil#\hfil& \vrule#&
 \hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
-&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
-Tempo (s)\hidewidth&&
-\omit\hidewidth Gerador\hidewidth&&Tempo (s)&\cr\linha
+&&\omit\hidewidth Generator\hidewidth&&\omit\hidewidth
+Time (s)\hidewidth&&
+\omit\hidewidth Generator\hidewidth&&Time (s)&\cr\linha
 &&SFMT&&9.571183&&Xoshiro**&&7.811493&\cr\linha
 &&PCG&&8.133946&&\monoespaco{LCG}&7.411282&\cr\linha
 &&ChaCha20&&10.498551&&SplitMix64&7.529885&&\cr\linha}}
@@ -1759,9 +1762,9 @@ Twister), we get the following result:
 \halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
 \hfil#& \vrule#& \hfil#\hfil& \vrule#&
 \hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
-&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
-Tempo (s)\hidewidth&&
-\omit\hidewidth Gerador\hidewidth&&Tempo (s)&\cr\linha
+&&\omit\hidewidth Generator\hidewidth&&\omit\hidewidth
+Time (s)\hidewidth&&
+\omit\hidewidth Generator\hidewidth&&Time (s)&\cr\linha
 &&SFMT&&-&&Xoshiro**&&4.570623&\cr\linha
 &&PCG&&-&&\monoespaco{LCG}&3.615481&\cr\linha
 &&ChaCha20&&8.019865&&SplitMix64&4.340963&&\cr\linha}}
@@ -1778,9 +1781,9 @@ with GCC 9.3.0, our result is:
 \halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
 \hfil#& \vrule#& \hfil#\hfil& \vrule#&
 \hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
-&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
-Tempo (s)\hidewidth&&
-\omit\hidewidth Gerador\hidewidth&&Tempo (s)&\cr\linha
+&&\omit\hidewidth Generator\hidewidth&&\omit\hidewidth
+Time (s)\hidewidth&&
+\omit\hidewidth Generator\hidewidth&&Time (s)&\cr\linha
 &&SFMT&&2.848333&&Xoshiro**&&2.565788&\cr\linha
 &&PCG&&2.292101&&\monoespaco{LCG}&2.378609&\cr\linha
 &&ChaCha20&&7.085438&&SplitMix64&2.437079&&\cr\linha}}
@@ -1789,7 +1792,22 @@ The most surprising result is PCG being faster than a linear
 congruential generator. This is very unexpected, as PCG uses
 internally a LCG. This is also the only case in which PCG run faster
 than Xoshiro** and SplitMix64. The result is not much different when
-compiling with Clang 10.0 in the same system.
+compiling with Clang 10.0 in the same system:
+
+\vbox{%A forma mais gseral de remover espaçamento entre linhas:
+\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
+\def\linha{\noalign{\hrule}}
+\def\hidewidth{\hskip-1000pt plus 1fill}
+\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
+\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
+\hfil#& \vrule#& \hfil#\hfil& \vrule#&
+\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
+&&\omit\hidewidth Generator\hidewidth&&\omit\hidewidth
+Time (s)\hidewidth&&
+\omit\hidewidth Generator\hidewidth&&Time (s)&\cr\linha
+&&SFMT&&2.601277&&Xoshiro**&&2.449881&\cr\linha
+&&PCG&&2.222556&&\monoespaco{LCG}&2.348797&\cr\linha
+&&ChaCha20&&4.620730&&SplitMix64&2.346077&&\cr\linha}}
 
 Using the same computer, but compiling using Emscripten 2.0.14 to
 produce Web Assembly and and executing the code in the browser 
@@ -1803,9 +1821,9 @@ Firefox 86.0, the result is:
 \halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
 \hfil#& \vrule#& \hfil#\hfil& \vrule#&
 \hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
-&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
-Tempo (s)\hidewidth&&
-\omit\hidewidth Gerador\hidewidth&&Tempo (s)&\cr\linha
+&&\omit\hidewidth Generator\hidewidth&&\omit\hidewidth
+Time (s)\hidewidth&&
+\omit\hidewidth Generator\hidewidth&&Time (s)&\cr\linha
 &&SFMT&&1.318&&Xoshiro**&&0.460&\cr\linha
 &&PCG&&1.324&&\monoespaco{LCG}&0.349&\cr\linha
 &&ChaCha20&&3.687&&SplitMix64&0.393&&\cr\linha}}
@@ -1815,52 +1833,46 @@ native code. Other than that, implementations which use 128-bit
 numbers appear to have a worse performance in this environment.
 
 
-\secao{5. Conclusão: Escolhendo o Algoritmo Padrão}
+\secao{5. Conclusion: Choosing the Default Algorithm}
 
-Para escolhermos qual será o algoritmo usado por padrão em nossa
-biblioteca, caso o usuário não defina macro que especifique o
-algoritmo, iremos primeiro levar em conta se o algoritmo pode ser
-executado na máquina ou arquitetura atual. Por exemplo, a
-implementação do PCG e de Mersenne Twister que fizemos não é muito
-portável, exigindo suporte do compilador para inteiros de 128
-bits. Compiladores como o Clang e GCC atualmente cumprem o
-requisito. Mas o Visual Studio da Microsoft não.
+When the user do not choose which algorithm our API will use, we
+should make for him an informed choice.
 
-Também iremos levar em conta se o algoritmo passou em todos os testes
-que fizemos. No momento, somente o LCG reprovou em um dos testes e por
-isso apesar de tender a ser tão rápido não deverá ser a prioridade.
+Our first criterion, of course, is if the algorithm is supported in
+the current architecture and environment. Algorithms PCG and Mersenne
+Twister will not compile if the chosen compiler do not support
+128-bit numbers.
 
-Por fim, levaremos em conta o desempenho deles e, se necessário, como
-critério de desempate, a quantidade de memória que ocupam (o que
-penaliza neste caso o Mersenne Twister que precisa de um vetor de
-elementos enorme como estado interno).
+The second criterion is if the algorithm passed in our tests. Here only
+LCG is excluded, all other algorithms passed. Therefore, we will not
+consider it in our third criteria.
 
-Levando em conta tais critérios, se estivermos gerando código Web
-Assembly, iremos usar o Xoshiro por ser o algoritmo que é mais rápido
-dentre os que passaram em todos os testes neste ambiente.
+The third criterion is the speed. Here in all our tests SplitMix64 was
+the faster one, except when we tested in a Linux environment. It is
+possible that this happened because the default compilers were more
+recent and optimized better an implementation with 128-bit variables.
 
-Nos demais ambientes, o PCG é ligeiramente mais rápido, mas nem sempre
-ele pode ser usado por ter um código não tão portável. Em tais casos,
-se for possível usaremos ele, e se não for, usaremos o Xoshiro que
-tende a ter um desempenho próximo do PCG mesmo:
+Combining these criteria, we end using SplitMix64 as the default
+random number generator, except if we are in Linux and we have a
+compiler that supports 128-bit variables:
 
 \iniciocodigo
 @<Choose Default RNG Algorithm@>=
 #if !defined(W_RNG_MERSENNE_TWISTER) && !defined(W_RNG_XOSHIRO) && \
 !defined(W_RNG_PCG) && !defined(W_RNG_LCG) && !defined(W_RNG_CHACHA20)
-#if !defined(__SIZEOF_INT128__) || defined(__EMSCRIPTEN__)
-#define W_RNG_XOSHIRO
-#else
+#if defined(__SIZEOF_INT128__) && defined(__linux__)
 #define W_RNG_PCG
+#else
+#define W_RNG_SPLITMIX
 #endif
 #endif
 @
 \fimcodigo
 
-\secao{Referências}
+\secao{References}
 
 \referencia{Knuth, D. E. (1984) ``Literate Programming'', The Computer Journal,
-volume 27, edição 2, p. 97--111}
+volume 27, second edition, p. 97--111}
 
 \referencia{Knuth, D. (1998) ``The Art of Computer Programming, v. 2:
 Seminumerical Algorithms'', Addison-Wesley Professional, third
@@ -1868,7 +1880,7 @@ edition.}
 
 \referencia{Saito, M.; Matsumoto M. (2006) ``SIMD-oriented fast Mersenne Twister: a 128-bit pseudorandom number generator'', Monte Carlo and Quasi-Monte Carlo Methods, Springer, p. 607--622}.
 
-\referencia{Steele, G.; Vigna S. (2021) ``Computationally Easy, Spectrally Good Multipliers for Congruential Pseudorandom Number Generators'', arXiv preprint arXiv:2001.05304}.
+\referencia{Steele, G.; Vigna S. (2021) ``Computationally Easy, Spectrally Good Multipliers for Congruential Pseudorandom Number Generators'', arXiv preprint arXiv:\-2001.\-05304}.
 
 \referencia{Matsumoto, M; Wada I.; Kuramoto A.; Ashihara, H. (2007) ``Common Defects in the Initialization of Pseudrandom Number Generators'', ACM Trans. Model. Comput. Simul, 17, 4.}
 

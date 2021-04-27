@@ -608,7 +608,7 @@ static uint32_t f2(uint32_t x){
 @
 \fimcodigo
 
-Como inicializaremos nossa estrutura é definido pela implementação de
+O modo de inicializar nossa estrutura é definido pela implementação de
 referência do algoritmo. Assim, tal como na referência, usamos um
 mini-gerador baseado em números de 32 bits para preencher o estado
 inicial:
@@ -1191,6 +1191,7 @@ armazenemos neste formato.
 
 A função de preenchimento é:
 
+\iniciocodigo
 @<ChaCha20: Preenchimento@>=
 #ifdef W_RNG_CHACHA20
 static void chacha_padding(uint64_t input[6], uint32_t output[16]){
@@ -1206,6 +1207,7 @@ static void chacha_padding(uint64_t input[6], uint32_t output[16]){
 }
 #endif
 @
+\fimcodigo
 
 Na entrada dessa função de preenchimento, os primeiros 4 valores
 sempre são retirados da semente inicial. O próximo é sempre um
@@ -1215,6 +1217,7 @@ em 1. E o último é um número que deve ser sempre usado uma só vez.
 O próximo componente é a função abaixo que recebe 4 valores de 32bits
 e os modifica realizando uma série de operações:
 
+\iniciocodigo
 @<ChaCha20: QuarterRound@>=
 #ifdef W_RNG_CHACHA20
 void quarter_round(uint32_t *a, uint32_t *b, uint32_t *c, uint32_t *d){
@@ -1233,10 +1236,12 @@ void quarter_round(uint32_t *a, uint32_t *b, uint32_t *c, uint32_t *d){
 }
 #endif
 @
+\fimcodigo
 
 A operação anterior é utilizada na seguinte função de permutação que
 recebe como entrada 16 elementos de 32 bits e os transforma:
 
+\iniciocodigo
 @<ChaCha20: Permutação@>=
 #ifdef W_RNG_CHACHA20
 void chacha_permutation(uint32_t elements[16]){
@@ -1254,6 +1259,7 @@ void chacha_permutation(uint32_t elements[16]){
 }
 #endif
 @
+\fimcodigo
 
 Com esses pré-requisitos podemos começar a definir a estrutura e
 funções de nossa API. A estrutura do gerador deverá armazenar um vetor
@@ -1368,6 +1374,7 @@ uint64_t _Wrand(struct _Wrng *rng){
 E finalmente a especificação fica completa mostrando como usando o seu
 estado interno o gerador obtém novos valores pseudo-aleatórios:
 
+\iniciocodigo
 @<ChaCha20: Gera Novos Valores@>=
 {
   int i;
@@ -1380,6 +1387,7 @@ estado interno o gerador obtém novos valores pseudo-aleatórios:
     rng -> generated_values[i] = padded_array[i] + copied_array[i];
 }
 @
+\fimcodigo
 
 \subsecao{2.6. Estrutura Final do Arquivo}
 
@@ -1427,10 +1435,11 @@ referência, a menos que seja dito o contrário, o valor esperado de
 sucesso é de 92,34\%.
 
 Todos os testes são feitos também para a mesma semente, escolhida de
-maneira elatória e uniforme. No caso, ela é a sequência de 5 valores:
-\monoespaco{0x32147198b5436569}, \monoespaco{0x260287febfeb34e9},
-\monoespaco{0x0b6cc94a91a265e4},
-\monoespaco{0xc6a109c50dd52f1b} e \monoespaco{0x8298497f3992d73a}.
+maneira elatória e uniforme. No caso, ela é a sequência de 5 valores
+hexadecimais:
+(\monoespaco{32147198b5436569}, \monoespaco{260287febfeb34e9},
+\monoespaco{0b6cc94a91a265e4},
+\monoespaco{c6a109c50dd52f1b}, \monoespaco{8298497f3992d73a}).
 
 \subsecao{3.1. Teste de Equidistribuição}
 
@@ -1745,7 +1754,7 @@ Sucesso\hidewidth&&
 &&PCG&&93\%&&\monoespaco{LCG}&93\%&\cr\linha
 &&ChaCha20&&93\%&&SplitMix64&&93\%&\cr\linha}}
 
-\subsubsecao{3.12. Generating all 32-bit values}
+\subsecao{3.12. Generating all 32-bit values}
 
 Este teste difere dos anteriores porque ao contrário de obter uma
 porcentagem de sucesso, nós estamos interessados se é possível gerar
@@ -1861,7 +1870,23 @@ O mais surpreendente é o PCG estar rodando mais rápido que o LCG. É
 inesperado tal resultado pelo fato do PCG usar internamente uma versão
 de gerador linear congruente para functionar. Este também foi o único
 ambiente no qual o PCG foi mais rápido que outros algoritmos como o
-Xoshiro** e SplitMix64.
+Xoshiro** e SplitMix64. O resultado não é muito diferente se
+executarmos no mesmo sistema, mas compilarmos com o Clang 10.0:
+
+\vbox{%A forma mais gseral de remover espaçamento entre linhas:
+\baselineskip-1000pt\lineskip0pt\lineskiplimit16383.99999pt\tabskip0pt
+\def\linha{\noalign{\hrule}}
+\def\hidewidth{\hskip-1000pt plus 1fill}
+\def\col{\hbox{\vrule height12pt depth3.5pt width0pt}}
+\halign to15cm{\col#& \vrule#\tabskip=1em plus2em&
+\hfil#& \vrule#& \hfil#\hfil& \vrule#&
+\hfil#& \vrule#&\hfil#& \vrule#\tabskip=0pt\cr\linha
+&&\omit\hidewidth Gerador\hidewidth&&\omit\hidewidth
+Tempo (s)\hidewidth&&
+\omit\hidewidth Gerador\hidewidth&&Tempo (s)&\cr\linha
+&&SFMT&&2.601277&&Xoshiro**&&2.449881&\cr\linha
+&&PCG&&2.222556&&\monoespaco{LCG}&2.348797&\cr\linha
+&&ChaCha20&&4.620730&&SplitMix64&2.346077&&\cr\linha}}
 
 Usando o mesmo computador, mas compilando usando o Emscripten 2.0.14
 para produzir Web Assembly e executar em uma página de Internet no
@@ -1889,42 +1914,36 @@ resultado sugere que implementações que são baseadas em variáveis de
 
 \secao{5. Conclusão: Escolhendo o Algoritmo Padrão}
 
-Para escolhermos qual será o algoritmo usado por padrão em nossa
-biblioteca, caso o usuário não defina macro que especifique o
-algoritmo, iremos primeiro levar em conta se o algoritmo pode ser
-executado na máquina ou arquitetura atual. Por exemplo, a
-implementação do PCG e de Mersenne Twister que fizemos não é muito
-portável, exigindo suporte do compilador para inteiros de 128
-bits. Compiladores como o Clang e GCC atualmente cumprem o
-requisito. Mas o Visual Studio da Microsoft não.
+Quando o usuário não escolher qual algoritmo nossa API deve usar,
+devemos fazer para ele uma escolha bem-informada.
 
-Também iremos levar em conta se o algoritmo passou em todos os testes
-que fizemos. No momento, somente o LCG reprovou em um dos testes e por
-isso apesar de tender a ser tão rápido não deverá ser a prioridade.
+Nosso primeiro critério, é claro, será se o algoritmo como
+implementado é suportado no ambiente e arquitetura atual. Os
+algoritmos PCG e Mersenne Twister não compilarão se o compilador não
+suportar números de 128 bits.
 
-Por fim, levaremos em conta o desempenho deles e, se necessário, como
-critério de desempate, a quantidade de memória que ocupam (o que
-penaliza neste caso o Mersenne Twister que precisa de um vetor de
-elementos enorme como estado interno).
+O segundo critério é se o algoritmo passou em todos os nossos testes
+de qualidade. Aqui só o LCG é excluído e não será considerado para o
+terceiro critério.
 
-Levando em conta tais critérios, se estivermos gerando código Web
-Assembly, iremos usar o Xoshiro por ser o algoritmo que é mais rápido
-dentre os que passaram em todos os testes neste ambiente.
+O terceiro critério é a velocidade. Aqui em todos os testes o
+SplitMix64 foi o mais rápido, exceto quando testado em ambiente
+Linux. É possível que isso ocorreu devido aos compiladores padrão
+serem mais recentes e conseguirem otimizar melhor implementações com
+128 bits.
 
-Nos demais ambientes, o PCG é ligeiramente mais rápido, mas nem sempre
-ele pode ser usado por ter um código não tão portável. Em tais casos,
-se for possível usaremos ele, e se não for, usaremos o Xoshiro que
-tende a ter um desempenho próximo do PCG mesmo:
+Combinando esses critérios, terminaremos usando o SplitMix64 em todos
+os cenários, exceto se estivermos no Linux e com um compilador que
+suporta variáveis de 128 bits:
 
 \iniciocodigo
 @<Escolhe Algoritmo Padrão do RNG@>=
 #if !defined(W_RNG_MERSENNE_TWISTER) && !defined(W_RNG_XOSHIRO) && \
-!defined(W_RNG_PCG) && !defined(W_RNG_LCG) && !defined(W_RNG_CHACHA20) && \
- !defined(W_RNG_SPLITMIX)
-#if !defined(__SIZEOF_INT128__) || defined(__EMSCRIPTEN__)
-#define W_RNG_XOSHIRO
-#else
+!defined(W_RNG_PCG) && !defined(W_RNG_LCG) && !defined(W_RNG_CHACHA20)
+#if defined(__SIZEOF_INT128__) && defined(__linux__)
 #define W_RNG_PCG
+#else
+#define W_RNG_SPLITMIX
 #endif
 #endif
 @
@@ -1939,9 +1958,9 @@ volume 27, edição 2, p. 97--111}
 Seminumerical Algorithms'', Addison-Wesley Professional, terceira
 edição.}
 
-\referencia{Saito, M.; Matsumoto M. (2006) ``SIMD-oriented fast Mersenne Twister: a 128-bit pseudorandom number generator'', Monte Carlo and Quasi-Monte Carlo Methods, Springer, p. 607--622}.
+\referencia{Saito, M.; Matsumoto M. (2006) ``SIMD-oriented fast Mersenne Twister: a 128-bit pseudorandom number generator'', Monte Carlo and Qua\-si-Mon\-te Carlo Me\-thods, Springer, p. 607--622}.
 
-\referencia{Steele, G.; Vigna S. (2021) ``Computationally Easy, Spectrally Good Multipliers for Congruential Pseudorandom Number Generators'', arXiv preprint arXiv:2001.05304}.
+\referencia{Steele, G.; Vigna S. (2021) ``Computationally Easy, Spectrally Good Multipliers for Congruential Pseudorandom Number Generators'', arXiv preprint arXiv:\-2001.\-05304}.
 
 \referencia{Matsumoto, M; Wada I.; Kuramoto A.; Ashihara, H. (2007) ``Common Defects in the Initialization of Pseudrandom Number Generators'', ACM Trans. Model. Comput. Simul, 17, 4.}
 

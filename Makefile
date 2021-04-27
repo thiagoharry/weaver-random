@@ -1,9 +1,9 @@
 report:
 	magitex-cweb weaver-random.tex
 	dvipdf weaver-random.dvi
-#doc_en:
-#	tex weaver-memory-manager_en.tex
-#	dvipdf weaver-memory-manager_en.dvi
+doc_en:
+	tex weaver-random_en.tex
+	dvipdf weaver-random_en.dvi
 src/random.c: weaver-random.tex
 	ctangle weaver-random.tex
 	rm weaver-random.c
