@@ -1,8 +1,8 @@
-/*50:*/
-#line 1390 "weaver-random.tex"
+/*57:*/
+#line 1514 "weaver-random.tex"
 
 /*6:*/
-#line 264 "weaver-random.tex"
+#line 266 "weaver-random.tex"
 
 #if defined(__unix__) || defined(__APPLE__)
 #include <pthread.h> 
@@ -11,19 +11,19 @@
 #include <windows.h> 
 #endif
 /*:6*/
-#line 1391 "weaver-random.tex"
+#line 1515 "weaver-random.tex"
 
 #include "random.h"
 #include <string.h>  
-/*25:*/
-#line 779 "weaver-random.tex"
+/*28:*/
+#line 828 "weaver-random.tex"
 
 #if defined(W_RNG_SPLITMIX) || defined(W_RNG_XOSHIRO) || defined(W_RNG_PCG) || \
   defined(W_RNG_CHACHA20)
 static inline uint64_t splitmix_next(uint64_t*state,uint64_t gamma){
 uint64_t ret;
-/*23:*/
-#line 753 "weaver-random.tex"
+/*26:*/
+#line 802 "weaver-random.tex"
 
 {
 uint64_t tmp= *state;
@@ -31,32 +31,32 @@ tmp= (tmp^(tmp>>33))*0xff51afd7ed558ccdl;
 tmp= (tmp^(tmp>>33))*0xc4ceb9fe1a85ec53l;
 ret= tmp^(tmp>>33);
 }
-/*:23*/
-#line 784 "weaver-random.tex"
+/*:26*/
+#line 833 "weaver-random.tex"
 
-/*24:*/
-#line 768 "weaver-random.tex"
+/*27:*/
+#line 817 "weaver-random.tex"
 
 {
 *state+= gamma;
 }
-/*:24*/
-#line 785 "weaver-random.tex"
+/*:27*/
+#line 834 "weaver-random.tex"
 
 return ret;
 }
 #endif
-/*:25*/
-#line 1394 "weaver-random.tex"
+/*:28*/
+#line 1518 "weaver-random.tex"
 
-/*15:*/
-#line 437 "weaver-random.tex"
+/*17:*/
+#line 469 "weaver-random.tex"
 
 #ifdef W_RNG_LCG
 uint64_t _Wrand(struct _Wrng*rng){
 uint64_t ret;
 /*9:*/
-#line 305 "weaver-random.tex"
+#line 307 "weaver-random.tex"
 
 #if defined(__unix__) || defined(__APPLE__)
 pthread_mutex_lock(&(rng->mutex));
@@ -65,12 +65,12 @@ pthread_mutex_lock(&(rng->mutex));
 EnterCriticalSection(&(rng->mutex));
 #endif
 /*:9*/
-#line 441 "weaver-random.tex"
+#line 473 "weaver-random.tex"
 
 rng->last_value= 0xfa346cbfd5890825*rng->last_value+rng->c;
 ret= rng->last_value;
 /*10:*/
-#line 318 "weaver-random.tex"
+#line 320 "weaver-random.tex"
 
 #if defined(__unix__) || defined(__APPLE__)
 pthread_mutex_unlock(&(rng->mutex));
@@ -79,19 +79,19 @@ pthread_mutex_unlock(&(rng->mutex));
 LeaveCriticalSection(&(rng->mutex));
 #endif
 /*:10*/
-#line 444 "weaver-random.tex"
+#line 476 "weaver-random.tex"
 
 return ret;
 }
 #endif
-/*:15*//*18:*/
-#line 574 "weaver-random.tex"
+/*:17*//*20:*/
+#line 606 "weaver-random.tex"
 
 #ifdef W_RNG_MERSENNE_TWISTER
 uint64_t _Wrand(struct _Wrng*rng){
 uint64_t ret;
 /*9:*/
-#line 305 "weaver-random.tex"
+#line 307 "weaver-random.tex"
 
 #if defined(__unix__) || defined(__APPLE__)
 pthread_mutex_lock(&(rng->mutex));
@@ -100,11 +100,11 @@ pthread_mutex_lock(&(rng->mutex));
 EnterCriticalSection(&(rng->mutex));
 #endif
 /*:9*/
-#line 578 "weaver-random.tex"
+#line 610 "weaver-random.tex"
 
 if(rng->offset%2==0){
-/*17:*/
-#line 522 "weaver-random.tex"
+/*19:*/
+#line 554 "weaver-random.tex"
 
 #ifdef __SIZEOF_INT128__
 unsigned __int128 result,tmp;
@@ -141,14 +141,14 @@ result= result^tmp;
 #else
 #error "Mersenne Twister unsupported without 128 bit integer support."
 #endif
-/*:17*/
-#line 580 "weaver-random.tex"
+/*:19*/
+#line 612 "weaver-random.tex"
 
 }
 ret= ((uint64_t*)(rng->w))[rng->offset];
 rng->offset= (rng->offset+1)%(128*156/64);
 /*10:*/
-#line 318 "weaver-random.tex"
+#line 320 "weaver-random.tex"
 
 #if defined(__unix__) || defined(__APPLE__)
 pthread_mutex_unlock(&(rng->mutex));
@@ -157,19 +157,19 @@ pthread_mutex_unlock(&(rng->mutex));
 LeaveCriticalSection(&(rng->mutex));
 #endif
 /*:10*/
-#line 584 "weaver-random.tex"
+#line 616 "weaver-random.tex"
 
 return ret;
 }
 #endif
-/*:18*//*27:*/
-#line 811 "weaver-random.tex"
+/*:20*//*30:*/
+#line 860 "weaver-random.tex"
 
 #ifdef W_RNG_SPLITMIX
 uint64_t _Wrand(struct _Wrng*rng){
 uint64_t ret;
 /*9:*/
-#line 305 "weaver-random.tex"
+#line 307 "weaver-random.tex"
 
 #if defined(__unix__) || defined(__APPLE__)
 pthread_mutex_lock(&(rng->mutex));
@@ -178,11 +178,11 @@ pthread_mutex_lock(&(rng->mutex));
 EnterCriticalSection(&(rng->mutex));
 #endif
 /*:9*/
-#line 815 "weaver-random.tex"
+#line 864 "weaver-random.tex"
 
 ret= splitmix_next(&(rng->state),rng->gamma);
 /*10:*/
-#line 318 "weaver-random.tex"
+#line 320 "weaver-random.tex"
 
 #if defined(__unix__) || defined(__APPLE__)
 pthread_mutex_unlock(&(rng->mutex));
@@ -191,19 +191,19 @@ pthread_mutex_unlock(&(rng->mutex));
 LeaveCriticalSection(&(rng->mutex));
 #endif
 /*:10*/
-#line 817 "weaver-random.tex"
+#line 866 "weaver-random.tex"
 
 return ret;
 }
 #endif
-/*:27*//*33:*/
-#line 940 "weaver-random.tex"
+/*:30*//*37:*/
+#line 1006 "weaver-random.tex"
 
 #ifdef W_RNG_XOSHIRO
 uint64_t _Wrand(struct _Wrng*rng){
 uint64_t ret;
 /*9:*/
-#line 305 "weaver-random.tex"
+#line 307 "weaver-random.tex"
 
 #if defined(__unix__) || defined(__APPLE__)
 pthread_mutex_lock(&(rng->mutex));
@@ -212,20 +212,20 @@ pthread_mutex_lock(&(rng->mutex));
 EnterCriticalSection(&(rng->mutex));
 #endif
 /*:9*/
-#line 944 "weaver-random.tex"
+#line 1010 "weaver-random.tex"
 
-/*32:*/
-#line 926 "weaver-random.tex"
+/*36:*/
+#line 992 "weaver-random.tex"
 
 {
 uint64_t tmp= rng->w[1]*5;
 ret= ((tmp<<7)|(tmp>>57))*9;
 }
-/*:32*/
-#line 945 "weaver-random.tex"
+/*:36*/
+#line 1011 "weaver-random.tex"
 
-/*31:*/
-#line 904 "weaver-random.tex"
+/*35:*/
+#line 970 "weaver-random.tex"
 
 {
 uint64_t t= rng->w[1]<<17;
@@ -236,11 +236,11 @@ rng->w[0]^= rng->w[3];
 rng->w[2]^= t;
 rng->w[3]= ((rng->w[3]<<45)|(rng->w[3]>>19));
 }
-/*:31*/
-#line 946 "weaver-random.tex"
+/*:35*/
+#line 1012 "weaver-random.tex"
 
 /*10:*/
-#line 318 "weaver-random.tex"
+#line 320 "weaver-random.tex"
 
 #if defined(__unix__) || defined(__APPLE__)
 pthread_mutex_unlock(&(rng->mutex));
@@ -249,19 +249,19 @@ pthread_mutex_unlock(&(rng->mutex));
 LeaveCriticalSection(&(rng->mutex));
 #endif
 /*:10*/
-#line 947 "weaver-random.tex"
+#line 1013 "weaver-random.tex"
 
 return ret;
 }
 #endif
-/*:33*//*39:*/
-#line 1076 "weaver-random.tex"
+/*:37*//*44:*/
+#line 1157 "weaver-random.tex"
 
 #ifdef W_RNG_PCG
 uint64_t _Wrand(struct _Wrng*rng){
 uint64_t ret;
 /*9:*/
-#line 305 "weaver-random.tex"
+#line 307 "weaver-random.tex"
 
 #if defined(__unix__) || defined(__APPLE__)
 pthread_mutex_lock(&(rng->mutex));
@@ -270,10 +270,10 @@ pthread_mutex_lock(&(rng->mutex));
 EnterCriticalSection(&(rng->mutex));
 #endif
 /*:9*/
-#line 1080 "weaver-random.tex"
+#line 1161 "weaver-random.tex"
 
-/*37:*/
-#line 1044 "weaver-random.tex"
+/*42:*/
+#line 1125 "weaver-random.tex"
 
 {
 unsigned __int128 multiplier;
@@ -282,11 +282,11 @@ multiplier= multiplier<<64;
 multiplier+= 4865540595714422341ULL;
 rng->state= rng->state*multiplier+rng->increment;
 }
-/*:37*/
-#line 1081 "weaver-random.tex"
+/*:42*/
+#line 1162 "weaver-random.tex"
 
-/*38:*/
-#line 1062 "weaver-random.tex"
+/*43:*/
+#line 1143 "weaver-random.tex"
 
 {
 uint64_t xorshifted,rot;
@@ -294,11 +294,11 @@ xorshifted= (((uint64_t)(rng->state>>64u))^((uint64_t)rng->state));
 rot= rng->state>>122u;
 ret= (xorshifted>>rot)|(xorshifted<<((-rot)&63));
 }
-/*:38*/
-#line 1082 "weaver-random.tex"
+/*:43*/
+#line 1163 "weaver-random.tex"
 
 /*10:*/
-#line 318 "weaver-random.tex"
+#line 320 "weaver-random.tex"
 
 #if defined(__unix__) || defined(__APPLE__)
 pthread_mutex_unlock(&(rng->mutex));
@@ -307,17 +307,17 @@ pthread_mutex_unlock(&(rng->mutex));
 LeaveCriticalSection(&(rng->mutex));
 #endif
 /*:10*/
-#line 1083 "weaver-random.tex"
+#line 1164 "weaver-random.tex"
 
 return ret;
 }
 #endif
-/*:39*//*48:*/
-#line 1344 "weaver-random.tex"
+/*:44*//*55:*/
+#line 1466 "weaver-random.tex"
 
 #ifdef W_RNG_CHACHA20
-/*42:*/
-#line 1194 "weaver-random.tex"
+/*48:*/
+#line 1293 "weaver-random.tex"
 
 #ifdef W_RNG_CHACHA20
 static void chacha_padding(uint64_t input[6],uint32_t output[16]){
@@ -332,11 +332,11 @@ output[j+1]= input[i]%4294967296llu;
 }
 }
 #endif
-/*:42*/
-#line 1346 "weaver-random.tex"
+/*:48*/
+#line 1468 "weaver-random.tex"
 
-/*43:*/
-#line 1218 "weaver-random.tex"
+/*49:*/
+#line 1319 "weaver-random.tex"
 
 #ifdef W_RNG_CHACHA20
 void quarter_round(uint32_t*a,uint32_t*b,uint32_t*c,uint32_t*d){
@@ -354,11 +354,11 @@ void quarter_round(uint32_t*a,uint32_t*b,uint32_t*c,uint32_t*d){
 *b= (*b<<7)|(*b>>25);
 }
 #endif
-/*:43*/
-#line 1347 "weaver-random.tex"
+/*:49*/
+#line 1469 "weaver-random.tex"
 
-/*44:*/
-#line 1240 "weaver-random.tex"
+/*50:*/
+#line 1343 "weaver-random.tex"
 
 #ifdef W_RNG_CHACHA20
 void chacha_permutation(uint32_t elements[16]){
@@ -375,13 +375,13 @@ quarter_round(&elements[3],&elements[4],&elements[9],&elements[14]);
 }
 }
 #endif
-/*:44*/
-#line 1348 "weaver-random.tex"
+/*:50*/
+#line 1470 "weaver-random.tex"
 
 uint64_t _Wrand(struct _Wrng*rng){
 uint64_t ret;
 /*9:*/
-#line 305 "weaver-random.tex"
+#line 307 "weaver-random.tex"
 
 #if defined(__unix__) || defined(__APPLE__)
 pthread_mutex_lock(&(rng->mutex));
@@ -390,12 +390,12 @@ pthread_mutex_lock(&(rng->mutex));
 EnterCriticalSection(&(rng->mutex));
 #endif
 /*:9*/
-#line 1351 "weaver-random.tex"
+#line 1473 "weaver-random.tex"
 
 if(rng->index%16==0){
 rng->index= 0;
-/*49:*/
-#line 1371 "weaver-random.tex"
+/*56:*/
+#line 1494 "weaver-random.tex"
 
 {
 int i;
@@ -407,8 +407,8 @@ chacha_permutation(padded_array);
 for(i= 0;i<16;i++)
 rng->generated_values[i]= padded_array[i]+copied_array[i];
 }
-/*:49*/
-#line 1354 "weaver-random.tex"
+/*:56*/
+#line 1476 "weaver-random.tex"
 
 rng->array[4]++;
 }
@@ -417,7 +417,7 @@ ret= ret<<32;
 ret+= rng->generated_values[rng->index+1];
 rng->index+= 2;
 /*10:*/
-#line 318 "weaver-random.tex"
+#line 320 "weaver-random.tex"
 
 #if defined(__unix__) || defined(__APPLE__)
 pthread_mutex_unlock(&(rng->mutex));
@@ -426,16 +426,16 @@ pthread_mutex_unlock(&(rng->mutex));
 LeaveCriticalSection(&(rng->mutex));
 #endif
 /*:10*/
-#line 1361 "weaver-random.tex"
+#line 1483 "weaver-random.tex"
 
 return ret;
 }
 #endif
-/*:48*/
-#line 1395 "weaver-random.tex"
+/*:55*/
+#line 1519 "weaver-random.tex"
 
 /*14:*/
-#line 414 "weaver-random.tex"
+#line 416 "weaver-random.tex"
 
 #ifdef W_RNG_LCG
 struct _Wrng*_Wcreate_rng(void*(*allocator)(size_t),size_t size,
@@ -448,7 +448,7 @@ rng->c= ((size> 1)?(seed[1]):(1));
 rng->last_value|= (1u);
 rng->c|= (1u);
 /*8:*/
-#line 292 "weaver-random.tex"
+#line 294 "weaver-random.tex"
 
 #if defined(__unix__) || defined(__APPLE__)
 pthread_mutex_init(&(rng->mutex),NULL);
@@ -457,14 +457,38 @@ pthread_mutex_init(&(rng->mutex),NULL);
 InitializeCriticalSection(&(rng->mutex));
 #endif
 /*:8*/
-#line 425 "weaver-random.tex"
+#line 427 "weaver-random.tex"
+
+/*15:*/
+#line 440 "weaver-random.tex"
+
+#if defined(W_DEBUG_RNG)
+{
+size_t s;
+printf("DEBUG: Creating LCG Random Number Generator ");
+printf("(mutiplier 0xfa346cbfd5890825)...\n");
+printf("DEBUG: RNG Seed: ");
+/*16:*/
+#line 457 "weaver-random.tex"
+
+for(s= 0;s<size;s++){
+printf("[%llx]",seed[s]);
+}
+printf("\n");
+/*:16*/
+#line 447 "weaver-random.tex"
+
+}
+#endif
+/*:15*/
+#line 428 "weaver-random.tex"
 
 }
 return rng;
 }
 #endif
-/*:14*//*19:*/
-#line 599 "weaver-random.tex"
+/*:14*//*21:*/
+#line 631 "weaver-random.tex"
 
 #ifdef W_RNG_MERSENNE_TWISTER
 static uint32_t f1(uint32_t x){
@@ -474,8 +498,8 @@ static uint32_t f2(uint32_t x){
 return(x^(x>>27))*(uint32_t)1566083941UL;
 }
 #endif
-/*:19*//*20:*/
-#line 617 "weaver-random.tex"
+/*:21*//*22:*/
+#line 649 "weaver-random.tex"
 
 #ifdef W_RNG_MERSENNE_TWISTER
 struct _Wrng*_Wcreate_rng(void*(*allocator)(size_t),size_t size,
@@ -522,8 +546,8 @@ dst[i]= r;
 i= (i+1)%size_dst;
 }
 rng->offset= 0;
-/*21:*/
-#line 680 "weaver-random.tex"
+/*23:*/
+#line 713 "weaver-random.tex"
 
 {
 
@@ -535,11 +559,11 @@ parity= parity&1;
 if(parity!=1)
 dst[0]= dst[0]^1;
 }
-/*:21*/
-#line 663 "weaver-random.tex"
+/*:23*/
+#line 695 "weaver-random.tex"
 
 /*8:*/
-#line 292 "weaver-random.tex"
+#line 294 "weaver-random.tex"
 
 #if defined(__unix__) || defined(__APPLE__)
 pthread_mutex_init(&(rng->mutex),NULL);
@@ -548,14 +572,37 @@ pthread_mutex_init(&(rng->mutex),NULL);
 InitializeCriticalSection(&(rng->mutex));
 #endif
 /*:8*/
-#line 664 "weaver-random.tex"
+#line 696 "weaver-random.tex"
+
+/*24:*/
+#line 731 "weaver-random.tex"
+
+#if defined(W_DEBUG_RNG)
+{
+size_t s;
+printf("DEBUG: Creating SFMT19937 Random Number Generator...");
+printf("DEBUG: RNG Seed: ");
+/*16:*/
+#line 457 "weaver-random.tex"
+
+for(s= 0;s<size;s++){
+printf("[%llx]",seed[s]);
+}
+printf("\n");
+/*:16*/
+#line 737 "weaver-random.tex"
+
+}
+#endif
+/*:24*/
+#line 697 "weaver-random.tex"
 
 }
 return rng;
 }
 #endif
-/*:20*//*28:*/
-#line 831 "weaver-random.tex"
+/*:22*//*31:*/
+#line 880 "weaver-random.tex"
 
 #ifdef W_RNG_SPLITMIX
 struct _Wrng*_Wcreate_rng(void*(*allocator)(size_t),size_t size,
@@ -571,7 +618,7 @@ rng->gamma= 0x9e3779b97f4a7c15;
 else
 rng->gamma= (seed[1]|1);
 /*8:*/
-#line 292 "weaver-random.tex"
+#line 294 "weaver-random.tex"
 
 #if defined(__unix__) || defined(__APPLE__)
 pthread_mutex_init(&(rng->mutex),NULL);
@@ -580,14 +627,37 @@ pthread_mutex_init(&(rng->mutex),NULL);
 InitializeCriticalSection(&(rng->mutex));
 #endif
 /*:8*/
-#line 845 "weaver-random.tex"
+#line 894 "weaver-random.tex"
+
+/*33:*/
+#line 919 "weaver-random.tex"
+
+#if defined(W_DEBUG_RNG)
+{
+size_t s;
+printf("DEBUG: Creating SplitMix64 Random Number Generator...");
+printf("DEBUG: RNG Seed: ");
+/*16:*/
+#line 457 "weaver-random.tex"
+
+for(s= 0;s<size;s++){
+printf("[%llx]",seed[s]);
+}
+printf("\n");
+/*:16*/
+#line 925 "weaver-random.tex"
+
+}
+#endif
+/*:33*/
+#line 895 "weaver-random.tex"
 
 }
 return rng;
 }
 #endif
-/*:28*//*34:*/
-#line 963 "weaver-random.tex"
+/*:31*//*38:*/
+#line 1029 "weaver-random.tex"
 
 #ifdef W_RNG_XOSHIRO
 struct _Wrng*_Wcreate_rng(void*(*allocator)(size_t),size_t size,
@@ -609,7 +679,7 @@ for(;i<4;i++)
 rng->w[i]= splitmix_next(&state,gamma);
 }
 /*8:*/
-#line 292 "weaver-random.tex"
+#line 294 "weaver-random.tex"
 
 #if defined(__unix__) || defined(__APPLE__)
 pthread_mutex_init(&(rng->mutex),NULL);
@@ -618,14 +688,37 @@ pthread_mutex_init(&(rng->mutex),NULL);
 InitializeCriticalSection(&(rng->mutex));
 #endif
 /*:8*/
-#line 983 "weaver-random.tex"
+#line 1049 "weaver-random.tex"
+
+/*40:*/
+#line 1073 "weaver-random.tex"
+
+#if defined(W_DEBUG_RNG)
+{
+size_t s;
+printf("DEBUG: Creating Xoshiro** Random Number Generator...");
+printf("DEBUG: RNG Seed: ");
+/*16:*/
+#line 457 "weaver-random.tex"
+
+for(s= 0;s<size;s++){
+printf("[%llx]",seed[s]);
+}
+printf("\n");
+/*:16*/
+#line 1079 "weaver-random.tex"
+
+}
+#endif
+/*:40*/
+#line 1050 "weaver-random.tex"
 
 }
 return rng;
 }
 #endif
-/*:34*//*40:*/
-#line 1107 "weaver-random.tex"
+/*:38*//*45:*/
+#line 1188 "weaver-random.tex"
 
 #ifdef W_RNG_PCG
 struct _Wrng*_Wcreate_rng(void*(*allocator)(size_t),size_t size,
@@ -672,7 +765,7 @@ rng->state+= splitmix_next(&state,gamma);
 rng->increment= 1;
 }
 /*8:*/
-#line 292 "weaver-random.tex"
+#line 294 "weaver-random.tex"
 
 #if defined(__unix__) || defined(__APPLE__)
 pthread_mutex_init(&(rng->mutex),NULL);
@@ -681,14 +774,37 @@ pthread_mutex_init(&(rng->mutex),NULL);
 InitializeCriticalSection(&(rng->mutex));
 #endif
 /*:8*/
-#line 1152 "weaver-random.tex"
+#line 1233 "weaver-random.tex"
+
+/*47:*/
+#line 1258 "weaver-random.tex"
+
+#if defined(W_DEBUG_RNG)
+{
+size_t s;
+printf("DEBUG: Creating PCG64 Random Number Generator...");
+printf("DEBUG: RNG Seed: ");
+/*16:*/
+#line 457 "weaver-random.tex"
+
+for(s= 0;s<size;s++){
+printf("[%llx]",seed[s]);
+}
+printf("\n");
+/*:16*/
+#line 1264 "weaver-random.tex"
+
+}
+#endif
+/*:47*/
+#line 1234 "weaver-random.tex"
 
 }
 return rng;
 }
 #endif
-/*:40*//*47:*/
-#line 1302 "weaver-random.tex"
+/*:45*//*53:*/
+#line 1406 "weaver-random.tex"
 
 #ifdef W_RNG_CHACHA20
 struct _Wrng*_Wcreate_rng(void*(*allocator)(size_t),size_t size,
@@ -718,7 +834,7 @@ else
 rng->array[5]= 0;
 rng->index= 0;
 /*8:*/
-#line 292 "weaver-random.tex"
+#line 294 "weaver-random.tex"
 
 #if defined(__unix__) || defined(__APPLE__)
 pthread_mutex_init(&(rng->mutex),NULL);
@@ -727,17 +843,40 @@ pthread_mutex_init(&(rng->mutex),NULL);
 InitializeCriticalSection(&(rng->mutex));
 #endif
 /*:8*/
-#line 1330 "weaver-random.tex"
+#line 1434 "weaver-random.tex"
+
+/*54:*/
+#line 1447 "weaver-random.tex"
+
+#if defined(W_DEBUG_RNG)
+{
+size_t s;
+printf("DEBUG: Creating ChaCha20 Random Number Generator...");
+printf("DEBUG: RNG Seed: ");
+/*16:*/
+#line 457 "weaver-random.tex"
+
+for(s= 0;s<size;s++){
+printf("[%llx]",seed[s]);
+}
+printf("\n");
+/*:16*/
+#line 1453 "weaver-random.tex"
+
+}
+#endif
+/*:54*/
+#line 1435 "weaver-random.tex"
 
 }
 return rng;
 }
 #endif
-/*:47*/
-#line 1396 "weaver-random.tex"
+/*:53*/
+#line 1520 "weaver-random.tex"
 
 /*11:*/
-#line 335 "weaver-random.tex"
+#line 337 "weaver-random.tex"
 
 bool _Wdestroy_rng(void(*free)(void*),struct _Wrng*rng){
 bool ret;
@@ -752,6 +891,6 @@ free(rng);
 return ret;
 }
 /*:11*/
-#line 1397 "weaver-random.tex"
+#line 1521 "weaver-random.tex"
 
-/*:50*/
+/*:57*/

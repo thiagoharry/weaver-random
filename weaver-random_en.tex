@@ -139,6 +139,9 @@ library. The content of \monoespaco{random.h} is:
 #ifdef __cplusplus
 extern "C" {
 #endif
+#if defined(W_DEBUG_RNG)
+#include <stdio.h>
+#endif
 #include <stdint.h>
 #include <stdbool.h>
 #if defined(__unix__) || defined(__APPLE__)
@@ -405,10 +408,40 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
     rng -> last_value |= (1u);
     rng -> c |= (1u);
     @<Initializing Mutex@>
+    @<LCG: Debug Message@>
   }
   return rng;
 }
 #endif
+@
+\fimcodigo
+
+If we are in debug mode, we print in the screen which algorithm we are
+using and what is the seed.
+
+\iniciocodigo
+@<LCG: Debug Message@>=
+#if defined(W_DEBUG_RNG)
+{
+  size_t s;
+  printf(stderr, "DEBUG: Creating LCG Random Number Generator ");
+  printf(stderr, "(mutiplier 0xfa346cbfd5890825)...\n");
+  printf(stderr, "DEBUG: RNG Seed: ");
+  @<Debug: Print Seed@>
+}
+#endif
+@
+\fimcodigo
+
+Printing a seed is as easy as looping over its elements and printing
+them:
+
+\iniciocodigo
+@<Debug: Print Seed@>=
+for(s = 0; s < size; s ++){
+  printf("[%llx]", seed[s]);
+}
+printf("\n");
 @
 \fimcodigo
 
@@ -636,6 +669,7 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
     rng -> offset = 0;
     @<SFMT: Ensure Period@>
     @<Initializing Mutex@>
+    @<SFMT: Debug Message@>
   }
   return rng;
 }
@@ -660,6 +694,22 @@ to ensure the correct period:
   if(parity != 1)
     dst[0] = dst[0] ^ 1;
 }
+@
+\fimcodigo
+
+If we are in debug mode, we also print the full algorithm name and its
+seed during initialization:
+
+\iniciocodigo
+@<SFMT: Debug Message@>=
+#if defined(W_DEBUG_RNG)
+{
+  size_t s;
+  printf("DEBUG: Creating SFMT19937 Random Number Generator...");
+  printf("DEBUG: RNG Seed: ");
+  @<Debug: Print Seed@>
+}
+#endif
 @
 \fimcodigo
 
@@ -808,6 +858,7 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
     else
       rng -> gamma = (seed[1] | 1);
     @<Initializing Mutex@>
+    @<SplitMix: Debug Message@>
   }
   return rng;
 }
@@ -823,6 +874,22 @@ This means that when using the SplitMix generator, we need a seed with
 #ifdef W_RNG_SPLITMIX
 #define _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE  1
 #define _W_RNG_MAXIMUM_RECOMMENDED_SEED_SIZE  2
+#endif
+@
+\fimcodigo
+
+And in debug mode we should always say whch algorithm we are using and
+what is the seed.
+
+\iniciocodigo
+@<SplitMix: Debug Message@>=
+#if defined(W_DEBUG_RNG)
+{
+  size_t s;
+  printf("DEBUG: Creating SplitMix64 Random Number Generator...");
+  printf("DEBUG: RNG Seed: ");
+  @<Debug: Print Seed@>
+}
 #endif
 @
 \fimcodigo
@@ -941,6 +1008,7 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
         rng -> w[i] = splitmix_next(&state, gamma);
     }                           
     @<Initializing Mutex@>
+    @<Xoshiro: Debug Message@>
   }
   return rng;
 }
@@ -960,6 +1028,20 @@ one and four 64-bit elements:
 @
 \fimcodigo
 
+And in debug mode we print the algorithm name and seed:
+
+\iniciocodigo
+@<Xoshiro: Debug Message@>=
+#if defined(W_DEBUG_RNG)
+{
+  size_t s;
+  printf("DEBUG: Creating Xoshiro** Random Number Generator...");
+  printf("DEBUG: RNG Seed: ");
+  @<Debug: Print Seed@>
+}
+#endif
+@
+\fimcodigo
 
 \subsecao{2.5. PCG (\italico{Permuted Congruential Generator})}
 
@@ -1107,6 +1189,7 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
       rng -> increment = 1;
     }                           
     @<Initializing Mutex@>
+    @<PCG: Debug Message@>
   }
   return rng;
 }
@@ -1122,6 +1205,21 @@ to avoid needing to stretch the initial randomness with SplitMix:
 #ifdef W_RNG_PCG
 #define _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE  2
 #define _W_RNG_MAXIMUM_RECOMMENDED_SEED_SIZE  4
+#endif
+@
+\fimcodigo
+
+In debug mode we print the algorithm and seed in the screen:
+
+\iniciocodigo
+@<PCG: Debug Message@>=
+#if defined(W_DEBUG_RNG)
+{
+  size_t s;
+  printf("DEBUG: Creating PCG64 Random Number Generator...");
+  printf("DEBUG: RNG Seed: ");
+  @<Debug: Print Seed@>
+}
 #endif
 @
 \fimcodigo
@@ -1286,8 +1384,24 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
       rng -> array[5] = 0;
     rng -> index = 0;
     @<Initializing Mutex@>
+    @<ChaCha: Debug Message@>
   }
   return rng;
+}
+#endif
+@
+\fimcodigo
+
+Remember that in debug mode we also need to print the seed:
+
+\iniciocodigo
+@<ChaCha: Debug Message@>=
+#if defined(W_DEBUG_RNG)
+{
+  size_t s;
+  printf("DEBUG: Creating ChaCha20 Random Number Generator...");
+  printf("DEBUG: RNG Seed: ");
+  @<Debug: Print Seed@>
 }
 #endif
 @
@@ -1859,7 +1973,8 @@ compiler that supports 128-bit variables:
 \iniciocodigo
 @<Choose Default RNG Algorithm@>=
 #if !defined(W_RNG_MERSENNE_TWISTER) && !defined(W_RNG_XOSHIRO) && \
-!defined(W_RNG_PCG) && !defined(W_RNG_LCG) && !defined(W_RNG_CHACHA20)
+!defined(W_RNG_PCG) && !defined(W_RNG_LCG) && !defined(W_RNG_CHACHA20) && \
+!defined(W_RNG_SPLITMIX)
 #if defined(__SIZEOF_INT128__) && defined(__linux__)
 #define W_RNG_PCG
 #else

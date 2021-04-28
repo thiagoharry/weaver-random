@@ -153,6 +153,9 @@ como uma biblioteca compartilhada. O conteúdo de \monoespaco{random.h}
 #ifdef __cplusplus
 extern "C" {
 #endif
+#if defined(W_DEBUG_RNG)
+#include <stdio.h>
+#endif
 #include <stdint.h>
 #include <stdbool.h>
 #if defined(__unix__) || defined(__APPLE__)
@@ -229,7 +232,6 @@ deixando a região abaixo a ser definida em breve:
 @<Avisa Tamanho Ideal da Semente@>
 @
 \fimcodigo
-
 
 A segunda função é a que efetivamente é usada para nos dar o próximo
 número aleatório da sequência, que será um elemento de 64 bits:
@@ -423,10 +425,40 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
     rng -> last_value |= (1u);
     rng -> c |= (1u);
     @<Inicialização de Mutex@>
+    @<LCG: Mensagem de Depuração@>
   }
   return rng;
 }
 #endif
+@
+\fimcodigo
+
+Se estivermos em modo de depuração, imprimimos na tela qual o
+algoritmo e semente usados:
+
+\iniciocodigo
+@<LCG: Mensagem de Depuração@>=
+#if defined(W_DEBUG_RNG)
+{
+  size_t s;
+  printf("DEBUG: Creating LCG Random Number Generator ");
+  printf("(mutiplier 0xfa346cbfd5890825)...\n");
+  printf("DEBUG: RNG Seed: ");
+  @<Depuração: Imprime Semente@>
+}
+#endif
+@
+\fimcodigo
+
+Para imprimir a semente apenas fazemos um laço e imprimimos como
+valores hexadecimais:
+
+\iniciocodigo
+@<Depuração: Imprime Semente@>=
+for(s = 0; s < size; s ++){
+  printf("[%llx]", seed[s]);
+}
+printf("\n");
 @
 \fimcodigo
 
@@ -662,6 +694,7 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
     rng -> offset = 0;
     @<SFMT: Garante Período@>
     @<Inicialização de Mutex@>
+    @<SFMT: Mensagem de Depuração@>
   }
   return rng;
 }
@@ -688,6 +721,22 @@ valores gerados:
   if(parity != 1)
     dst[0] = dst[0] ^ 1;
 }
+@
+\fimcodigo
+
+Se estivermos em modo de depuração avisamos qual algoritmo estamos
+usando e qual semente:
+
+\iniciocodigo
+@<SFMT: Mensagem de Depuração@>=
+#if defined(W_DEBUG_RNG)
+{
+  size_t s;
+  printf("DEBUG: Creating SFMT19937 Random Number Generator...");
+  printf("DEBUG: RNG Seed: ");
+  @<Depuração: Imprime Semente@>
+}
+#endif
 @
 \fimcodigo
 
@@ -843,6 +892,7 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
     else
       rng -> gamma = (seed[1] | 1);
     @<Inicialização de Mutex@>
+    @<SplitMix: Mensagem de Depuração@>
   }
   return rng;
 }
@@ -858,6 +908,22 @@ precisamos de uma semente com 1 ou 2 números de 64 bits:
 #ifdef W_RNG_SPLITMIX
 #define _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE  1
 #define _W_RNG_MAXIMUM_RECOMMENDED_SEED_SIZE  2
+#endif
+@
+\fimcodigo
+
+E em modo de depuração devemos sempre avisar qual algoritmo e semente
+estamos usando:
+
+\iniciocodigo
+@<SplitMix: Mensagem de Depuração@>=
+#if defined(W_DEBUG_RNG)
+{
+  size_t s;
+  printf("DEBUG: Creating SplitMix64 Random Number Generator...");
+  printf("DEBUG: RNG Seed: ");
+  @<Depuração: Imprime Semente@>
+}
 #endif
 @
 \fimcodigo
@@ -981,6 +1047,7 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
         rng -> w[i] = splitmix_next(&state, gamma);
     }
     @<Inicialização de Mutex@>
+    @<Xoshiro: Mensagem de Depuração@>
   }
   return rng;
 }
@@ -1000,6 +1067,20 @@ recomendado para a semente deste gerador:
 @
 \fimcodigo
 
+E no modo de depuração imprimimos o algoritmo usado e a semente:
+
+\iniciocodigo
+@<Xoshiro: Mensagem de Depuração@>=
+#if defined(W_DEBUG_RNG)
+{
+  size_t s;
+  printf("DEBUG: Creating Xoshiro** Random Number Generator...");
+  printf("DEBUG: RNG Seed: ");
+  @<Depuração: Imprime Semente@>
+}
+#endif
+@
+\fimcodigo
 
 \subsecao{2.5. PCG (\italico{Permuted Congruential Generator})}
 
@@ -1150,6 +1231,7 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
       rng -> increment = 1;
     }
     @<Inicialização de Mutex@>
+    @<PCG: Mensagem de Depuração@>
   }
   return rng;
 }
@@ -1169,6 +1251,22 @@ esticar a aleatoriedae com o SplitMix:
 #endif
 @
 \fimcodigo
+
+Em modo de depuração, imprimimos o algoritmo e semente usados:
+
+\iniciocodigo
+@<PCG: Mensagem de Depuração@>=
+#if defined(W_DEBUG_RNG)
+{
+  size_t s;
+  printf("DEBUG: Creating PCG64 Random Number Generator...");
+  printf("DEBUG: RNG Seed: ");
+  @<Depuração: Imprime Semente@>
+}
+#endif
+@
+\fimcodigo
+
 
 \subsecao{2.6. ChaCha20}
 
@@ -1297,7 +1395,7 @@ ideal é que nossa semente tenha entre 4 e 5 valores:
 @
 \fimcodigo
 
-A questão é o que fazr se nossa semente for menor que isso. Faremos a
+A questão é o que fazer se nossa semente for menor que isso. Faremos a
 mesma coisa que fizemos com o Xoshiro: usamos o algoritmo splitmix64
 para preencher os próximos à partir do valor que temos (e usamos uma
 constante se não existir nenhum). Mas não se deve ter nenhuma
@@ -1334,12 +1432,30 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
       rng -> array[5] = 0;
     rng -> index = 0;
     @<Inicialização de Mutex@>
+    @<ChaCha: Mensagem de Depuração@>
   }
   return rng;
 }
 #endif
 @
 \fimcodigo
+
+Lembrando que em modo de depuração devemos sempre avisar qual semente
+usamos:
+
+\iniciocodigo
+@<ChaCha: Mensagem de Depuração@>=
+#if defined(W_DEBUG_RNG)
+{
+  size_t s;
+  printf("DEBUG: Creating ChaCha20 Random Number Generator...");
+  printf("DEBUG: RNG Seed: ");
+  @<Depuração: Imprime Semente@>
+}
+#endif
+@
+\fimcodigo
+
 
 Quando tivermos que gerar um novo valor, geralmente temos valores já
 gerados no vetor de 16 números de 32 bits. Com eles dá para gerarmos 8
@@ -1939,7 +2055,8 @@ suporta variáveis de 128 bits:
 \iniciocodigo
 @<Escolhe Algoritmo Padrão do RNG@>=
 #if !defined(W_RNG_MERSENNE_TWISTER) && !defined(W_RNG_XOSHIRO) && \
-!defined(W_RNG_PCG) && !defined(W_RNG_LCG) && !defined(W_RNG_CHACHA20)
+!defined(W_RNG_PCG) && !defined(W_RNG_LCG) && !defined(W_RNG_CHACHA20) && \
+!defined(W_RNG_SPLITMIX)
 #if defined(__SIZEOF_INT128__) && defined(__linux__)
 #define W_RNG_PCG
 #else
