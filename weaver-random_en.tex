@@ -1363,7 +1363,7 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
   struct _Wrng *rng = (struct _Wrng *) allocator(sizeof(struct _Wrng));
   if(rng != NULL){
     for(i = 0; i < 4; i ++){
-      if(i < size - 1 || size >= 4)
+      if(i < ((int) size) - 1 || size >= 4)
         rng -> array[i] = seed[i];
       else{
         // Using SplitMix to fill the remaining values
