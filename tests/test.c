@@ -961,6 +961,7 @@ void measure_time(void){
 	 (1000000 * (_end.tv_sec - _begin.tv_sec) + _end.tv_usec -
 	  _begin.tv_usec) / 1000000.0, (unsigned long long) dummy_sum);
 #endif
+  _Wdestroy_rng(free, my_rng);
 }
 
 void test_serial_correlation(void){
@@ -1017,9 +1018,6 @@ int main(int argc, char **argv){
 	 _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE,
 	 _W_RNG_MAXIMUM_RECOMMENDED_SEED_SIZE);
   measure_time();
-#if !defined(__EMSCRIPTEN__)
-  test_all32();
-#endif
 #if defined(W_RNG_MERSENNE_TWISTER)
   test_mersenne_twister();
 #elif defined(W_RNG_XOSHIRO)
@@ -1029,6 +1027,9 @@ int main(int argc, char **argv){
 #endif
 #if !defined(__EMSCRIPTEN__)
   test_multithread();
+#endif
+#if !defined(__EMSCRIPTEN__)
+  test_all32();
 #endif
   test_equidistribution();
   test_serial();
