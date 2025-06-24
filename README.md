@@ -1,6 +1,6 @@
 # weaver-random
 
-A Random Number Generator API written in literary programming.
+A Random Number Generator API written in literate programming.
 
 Read the code [here (in portuguese)](https://github.com/thiagoharry/weaver-random/blob/master/weaver-random.pdf) or 
 [here (in english)](https://github.com/thiagoharry/weaver-random/blob/master/weaver-random_en.pdf)
