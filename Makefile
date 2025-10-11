@@ -1,13 +1,28 @@
 report:
-	magitex-cweb weaver-random.tex
+	magitex-cweb weaver-random.cweb
 	dvipdf weaver-random.dvi
 doc_en:
-	tex weaver-random_en.tex
+	tex weaver-random_en.cweb
 	dvipdf weaver-random_en.dvi
-src/random.c: weaver-random.tex
-	ctangle weaver-random.tex
+src/random.c: weaver-random.cweb
+	ctangle weaver-random.cweb
 	rm weaver-random.c
 test: tests/test.c src/random.c
+	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_PCG -pthread tests/test.c src/random.c -o test_pcg -lm
+	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_MERSENNE_TWISTER -pthread tests/test.c src/random.c -o test_sfmt -lm
+	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_XOSHIRO -pthread tests/test.c src/random.c -o test_xoshiro -lm
+	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_LCG -pthread tests/test.c src/random.c -o test_lcg -lm
+	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_CHACHA20 -pthread tests/test.c src/random.c -o test_chacha -lm
+	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_SPLITMIX -pthread tests/test.c src/random.c -o test_splitmix -lm
+	./test_chacha
+	./test_sfmt
+	./test_xoshiro
+	./test_pcg
+	./test_lcg
+	./test_splitmix
+test_en:
+	ctangle weaver-random_en.cweb
+	rm weaver-random_en.c
 	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_PCG -pthread tests/test.c src/random.c -o test_pcg -lm
 	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_MERSENNE_TWISTER -pthread tests/test.c src/random.c -o test_sfmt -lm
 	$(CC) $(CFLAGS) -Wall -O2 -DW_RNG_XOSHIRO -pthread tests/test.c src/random.c -o test_xoshiro -lm

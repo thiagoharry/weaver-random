@@ -964,6 +964,38 @@ void measure_time(void){
   _Wdestroy_rng(free, my_rng);
 }
 
+void measure_time_secure(void){
+  int i;
+  dummy_sum = 0;
+  struct _Wsecure_rng *my_rng = _Wcreate_secure_rng(malloc, seed_size, seed);
+#ifdef _WIN32
+  LARGE_INTEGER t1, f, t2, e;
+  double elapsed;
+  QueryPerformanceFrequency(&f);
+  QueryPerformanceCounter(&t1);
+  for(i = 0; i < 100000000; i ++)
+    dummy_sum += _Wsecure_rand(my_rng);
+  QueryPerformanceCounter(&t2);
+  e.QuadPart = t2.QuadPart - t1.QuadPart;
+  e.QuadPart *= 1000000;
+  e.QuadPart /= f.QuadPart;
+  elapsed = ((double)e.QuadPart) *1e-6;
+  printf("Generated 100 million of random values in %f seconds (sum: %llu).\n",
+	 elapsed, (unsigned long long) dummy_sum);
+#else
+  struct timeval _begin, _end;
+  gettimeofday(&_begin, NULL);
+  for(i = 0; i < 100000000; i ++)
+    dummy_sum += _Wsecure_rand(my_rng);
+  gettimeofday(&_end, NULL);
+  printf("Generated 100 million of secure random values in %f seconds (sum: %llu).\n",
+	 (1000000 * (_end.tv_sec - _begin.tv_sec) + _end.tv_usec -
+	  _begin.tv_usec) / 1000000.0, (unsigned long long) dummy_sum);
+#endif
+  _Wdestroy_secure_rng(free, my_rng);
+}
+
+
 void test_serial_correlation(void){
   struct _Wrng *my_rng = _Wcreate_rng(malloc, seed_size, seed);
   int i, shift, total_tests;
@@ -1018,6 +1050,7 @@ int main(int argc, char **argv){
 	 _W_RNG_MINIMUM_RECOMMENDED_SEED_SIZE,
 	 _W_RNG_MAXIMUM_RECOMMENDED_SEED_SIZE);
   measure_time();
+  measure_time_secure();
 #if defined(W_RNG_MERSENNE_TWISTER)
   test_mersenne_twister();
 #elif defined(W_RNG_XOSHIRO)

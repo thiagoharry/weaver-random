@@ -193,15 +193,15 @@ Aleatório'' com o código que irá nesta parte vermelha indicada.
 \subsecao{1.3. Funções de API a serem Definidas}
 
 Nosso gerador de números aleatórios deverá fornecer um total de 3
-novas funções.
+tipos de novas funções.
 
-A primeira função gera e inicializa um gerador retornando um ponteiro
-para ele. Para inicializá-lo, precisamos de uma função de alocação de
-memória passada como primiero argumento (pode ser o \monoespaco{malloc} da
-biblioteca padrão ou qualquer outro alocador personalizado). Em
-seguida nossa semente será um valor com um tamanho de um vetor e o
-.petor propriamente dito de números de 64 bits que assumimos terem sido
-obtidos de maneira aleatória e uniforme.
+O primeiro tipo de função gera e inicializa um gerador retornando um
+ponteiro para ele. Para inicializá-lo, precisamos de uma função de
+alocação de memória passada como primiero argumento (pode ser o
+\monoespaco{malloc} da biblioteca padrão ou qualquer outro alocador
+personalizado). Em seguida nossa semente será um valor com um tamanho
+de um vetor e o .petor propriamente dito de números de 64 bits que
+assumimos terem sido obtidos de maneira aleatória e uniforme.
 
 Dessa forma, nossa função de inicialização é suficientemente genérica
 para que o usuário possa fornecer um número personalizado de entropia
@@ -214,9 +214,14 @@ ambientes pode ser difícil conseguir uma quantidade muito grande de
 bits aleatórios para inicialização. Então, a API permite que um número
 menor seja passado.
 
+Existem duas versões de gerador: para geradores comuns e para
+geradores criptograficamente seguros.
+
 \iniciocodigo
 @<Declarações de Gerador Aleatório@>=
 struct _Wrng *_Wcreate_rng(void *(*alloc)(size_t), size_t size, uint64_t *seed);
+struct _Wsecure_rng *_Wcreate_secure_rng(void *(*alloc)(size_t), size_t size, 
+                                         uint64_t *seed);
 @
 \fimcodigo
 
@@ -233,17 +238,19 @@ deixando a região abaixo a ser definida em breve:
 @
 \fimcodigo
 
-A segunda função é a que efetivamente é usada para nos dar o próximo
-número aleatório da sequência, que será um elemento de 64 bits:
+O segundo tipo de função é a que efetivamente é usada para nos dar o
+próximo número aleatório da sequência, que será um elemento de 64
+bits:
 
 \iniciocodigo
 @<Declarações de Gerador Aleatório@>+=
 uint64_t _Wrand(struct _Wrng *);
+uint64_t _Wsecure_rand(struct _Wsecure_rng *);
 @
 \fimcodigo
 
-A última função será apenas para finalizar o uso de um gerador de
-números aleatórios. Ela recebe também um ponteiro para função que
+O último tipo de função será apenas para finalizar o uso de um gerador
+de números aleatórios. Ela recebe também um ponteiro para função que
 desalocará o gerador (ou NULL). Se receber NULL, o gerador não será
 desalocado (alguns alocadores podem ter seu próprio coletor de lixo
 sem fornecerem função de desalocação). De qualquer forma, ele não
@@ -252,6 +259,7 @@ poderá mais ser usado depois de finalizado:
 \iniciocodigo
 @<Declarações de Gerador Aleatório@>+=
 bool _Wdestroy_rng(void (*free)(void *), struct _Wrng *);
+bool _Wdestroy_secure_rng(void (*free)(void *), struct _Wsecure_rng *);
 @
 \fimcodigo
 
@@ -263,7 +271,7 @@ inicialização. Para isso precisamos de um cabeçalho adequado para
 declarar os tipos que iremos usar nos ambientes em que for suportado:
 
 \iniciocodigo
-@<Incluir Cabeçalhos Necessários@>+=
+@<Incluir Cabeçalhos Necessários@>=
 #if defined(__unix__) || defined(__APPLE__)
 #include <pthread.h>
 #endif
@@ -331,11 +339,25 @@ O principal motivo de precisarmos de uma função para finalizar nosso
 gerador, a função \monoespaco{\_Wdestroy\_rng}, é que precisaremos
 finalizar o uso do mutex, além de desalocar o gerador se
 necessário. Como é só isso, podemos já declarar esta função nesta
-parte, pois já temos o necessário para defini-la:
+parte, pois já temos o necessário para defini-la. E não há diferença
+entre desalocar a estrutura de um gerador padrão e de um
+criptograficamente seguro:
 
 \iniciocodigo
 @<Definição de \_Wdestroy\_rng@>=
 bool _Wdestroy_rng(void (*free)(void *), struct _Wrng *rng){
+  bool ret;
+#if defined(__unix__) || defined(__APPLE__)
+  ret = pthread_mutex_destroy(&(rng -> mutex));
+#elif defined(_WIN32)
+  DeleteCriticalSection(&(rng -> mutex));
+  ret = true; // Sempre é bem-sucedida segundo a documentação
+#endif
+  if(free != NULL)
+    free(rng);
+  return ret;
+}
+bool _Wdestroy_secure_rng(void (*free)(void *), struct _Wsecure_rng *rng){
   bool ret;
 #if defined(__unix__) || defined(__APPLE__)
   ret = pthread_mutex_destroy(&(rng -> mutex));
@@ -826,8 +848,7 @@ pseudo-randômico é:
 
 \iniciocodigo
 @<Funções Auxiliares@>=
-#if defined(W_RNG_SPLITMIX) || defined(W_RNG_XOSHIRO) || defined(W_RNG_PCG) || \
-  defined(W_RNG_CHACHA20)
+#if defined(W_RNG_SPLITMIX) || defined(W_RNG_XOSHIRO) || defined(W_RNG_PCG)
 static inline uint64_t splitmix_next(uint64_t *state, uint64_t gamma){
   uint64_t ret;
   @<SplitMix: Misturador de Bits@>
@@ -1271,7 +1292,7 @@ Em modo de depuração, imprimimos o algoritmo e semente usados:
 \subsecao{2.6. ChaCha20}
 
 O ChaCha20 é um gerador projetado para ser criptograficamente seguro,
-mas essa afirmação só é verdadeira se ele for alimentado com ua
+mas essa afirmação só é verdadeira se ele for alimentado com uma
 semente com um tamanho adequado, e se a semente realmente for obtida
 de maneira aleatória e uniforme e sem que ela seja reaproveitada
 novamente. Nossa API não garante tais coisas, aqui não estamos
@@ -1279,6 +1300,14 @@ interessados em geradores criptograficamente seguros. Para nós o
 CHaCha20 será apenas um gerador como todos os outros anteriores, com o
 diferencial de que espera-se que ele tenha uma qualidade maior com um
 maior custo em desempenho para compensar.
+
+Como o objetivo de nossa API é oferecer opção de gerador de números
+aleatórios tanto comum como criptograficamente seguro, e o ChaCha20 é
+nossa única opção de gerador criptograficamente seguro, ele é um
+algoritmo que sempre será definido, independente das macros do
+programa. Mas se o usuário definir a macro
+\monoespaco{W\_RNG\_CHACHA20}, então o ChaCha20 também será usado como
+gerador comum (para fins não criptográficos).
 
 O algoritmo tem como primeiro componente de seu funcionamento uma
 função de preenchimento, que receberá como entrada 384 bits (a serem
@@ -1291,7 +1320,6 @@ A função de preenchimento é:
 
 \iniciocodigo
 @<ChaCha20: Preenchimento@>=
-#ifdef W_RNG_CHACHA20
 static void chacha_padding(uint64_t input[6], uint32_t output[16]){
   int i, j;
   output[0] = ('e' << 24) + ('x' << 16) + ('p' << 8) + 'a';
@@ -1303,7 +1331,6 @@ static void chacha_padding(uint64_t input[6], uint32_t output[16]){
     output[j+1] = input[i] % 4294967296llu;
   }
 }
-#endif
 @
 \fimcodigo
 
@@ -1317,7 +1344,6 @@ e os modifica realizando uma série de operações:
 
 \iniciocodigo
 @<ChaCha20: QuarterRound@>=
-#ifdef W_RNG_CHACHA20
 void quarter_round(uint32_t *a, uint32_t *b, uint32_t *c, uint32_t *d){
   *a = *a + *b;
   *d = *d ^ *a;
@@ -1332,7 +1358,6 @@ void quarter_round(uint32_t *a, uint32_t *b, uint32_t *c, uint32_t *d){
   *b = *b ^ *c;
   *b = (*b << 7) | (*b >> 25);
 }
-#endif
 @
 \fimcodigo
 
@@ -1341,7 +1366,6 @@ recebe como entrada 16 elementos de 32 bits e os transforma:
 
 \iniciocodigo
 @<ChaCha20: Permutação@>=
-#ifdef W_RNG_CHACHA20
 void chacha_permutation(uint32_t elements[16]){
   int i;
   for(i = 0; i < 10; i ++){
@@ -1355,7 +1379,6 @@ void chacha_permutation(uint32_t elements[16]){
     quarter_round(&elements[3], &elements[4], &elements[9], &elements[14]);
   }
 }
-#endif
 @
 \fimcodigo
 
@@ -1377,6 +1400,12 @@ struct _Wrng{
   @<Declaração de Mutex@>
 };
 #endif
+struct _Wsecure_rng{
+  uint64_t array[6];
+  uint32_t generated_values[16];
+  int index;
+  @<Declaração de Mutex@>
+};
 @
 \fimcodigo
 
@@ -1395,34 +1424,25 @@ ideal é que nossa semente tenha entre 4 e 5 valores:
 @
 \fimcodigo
 
-A questão é o que fazer se nossa semente for menor que isso. Faremos a
-mesma coisa que fizemos com o Xoshiro: usamos o algoritmo splitmix64
-para preencher os próximos à partir do valor que temos (e usamos uma
-constante se não existir nenhum). Mas não se deve ter nenhuma
-expenctativa de que a qualidade é mantida com uma semente reduzida
-(não é, e é catastrófico se for usado para fins criptográficos):
+A questão é o que fazer se nossa semente for menor que isso. Não
+podemos fazer a mesma coisa que fizemos com o Xoshiro (usar o
+splitmix64 para preencher os valores faltantes), pois isso
+comprometeria o algoritmo que foi feito apra ser seguro. Neste caso,
+teremos que nos recusar a continuar e retornar NULL:
 
-\iniciocodigo
 @<Definição de \_Wcreate\_rng@>=
-#ifdef W_RNG_CHACHA20
-struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
-                           uint64_t *seed){
-  int i, j;
-  struct _Wrng *rng = (struct _Wrng *) allocator(sizeof(struct _Wrng));
+struct _Wsecure_rng *_Wcreate_secure_rng(void *(*allocator)(size_t), size_t size,
+                                         uint64_t *seed){
+  int i;
+  struct _Wsecure_rng *rng = (struct _Wsecure_rng *) 
+                                 allocator(sizeof(struct _Wsecure_rng));
   if(rng != NULL){
     for(i = 0; i < 4; i ++){
       if(i < ((int) size) - 1 || size >= 4)
         rng -> array[i] = seed[i];
       else{
-        // Using SplitMix to fill the remaining values
-        uint64_t state, gamma = 0x9e3779b97f4a7c15;
-        if(size > 0)
-          state = seed[i];
-        else
-          state = 0x32147198b5436569;
-        for(j = i; j < 4; j ++)
-          rng -> array[j] = splitmix_next(&state, gamma);
-        break;        
+        // A semente é pequena demais!
+        return NULL;
       }
     }
     rng -> array[4] = 0;
@@ -1436,9 +1456,13 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
   }
   return rng;
 }
+#ifdef W_RNG_CHACHA20
+struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
+                           uint64_t *seed){
+  return (struct _Wrng *) _Wcreate_secure_rng(allocator, size, seed);
+}
 #endif
 @
-\fimcodigo
 
 Lembrando que em modo de depuração devemos sempre avisar qual semente
 usamos:
@@ -1464,11 +1488,10 @@ gerar novos valores:
 
 \iniciocodigo
 @<Definição de \_Wrand@>=
-#ifdef W_RNG_CHACHA20
 @<ChaCha20: Preenchimento@>
 @<ChaCha20: QuarterRound@>
 @<ChaCha20: Permutação@>
-uint64_t _Wrand(struct _Wrng *rng){
+uint64_t _Wsecure_rand(struct _Wsecure_rng *rng){
   uint64_t ret;
   @<Mutex:WAIT@>
   if(rng -> index % 16 == 0){
@@ -1482,6 +1505,10 @@ uint64_t _Wrand(struct _Wrng *rng){
   rng -> index += 2; 
   @<Mutex:SIGNAL@>
   return ret;
+}
+#ifdef W_RNG_CHACHA20
+uint64_t _Wrand(struct _Wrng *rng){
+  return _Wsecure_rand((struct _Wsecure_rng *) rng);
 }
 #endif
 @

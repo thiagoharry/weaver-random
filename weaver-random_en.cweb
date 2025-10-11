@@ -177,9 +177,9 @@ will be inserted in the place of the red text in the code above.
 
 \subsecao{1.3. API functions that will be defined}
 
-Our RNG API will have three different functions.
+Our RNG API will have three tipes of different functions.
 
-The first one generates and initializes a random number generator
+The first type generates and initializes a random number generator
 returning a pointer for it. To initialize it, we will require a memory
 allocation function (can be \monoespaco{malloc} from standard library,
 or a custom memory allocator). Next we need a seed represented as an
@@ -196,9 +196,14 @@ machines and environment, getting randomness could be difficult and we
 should be able to pass a smaller number of random bits during
 initialization.
 
+There are two versions of the generator: one for regular generators
+and another for cryptographically secure ones.
+
 \iniciocodigo
 @<RNG Declarations@>=
 struct _Wrng *_Wcreate_rng(void *(*alloc)(size_t), size_t size, uint64_t *seed);
+struct _Wsecure_rng *_Wcreate_secure_rng(void *(*alloc)(size_t), size_t size, 
+                                         uint64_t *seed);
 @
 \fimcodigo
 
@@ -216,16 +221,17 @@ different algorithms:
 @
 \fimcodigo
 
-The second function in our API is the one that returns a new 64-bit
+The second type of function is the one that returns a new 64-bit
 random number after each invocation:
 
 \iniciocodigo
 @<RNG Declarations@>+=
 uint64_t _Wrand(struct _Wrng *);
+uint64_t _Wsecure_rand(struct _Wsecure_rng *);
 @
 \fimcodigo
 
-And the last function will finalize the random number generator. It
+And the last type will finalize the random number generator. It
 receives a pointer for the dis-allocation function or NULL. If the
 function gets NULL as first argument, the random number generator will
 not be dis-allocated (some memory managers could use some kind of
@@ -236,6 +242,7 @@ after being finalized with this function:
 \iniciocodigo
 @<RNG Declarations@>+=
 bool _Wdestroy_rng(void (*free)(void *), struct _Wrng *);
+bool _Wdestroy_secure_rng(void (*free)(void *), struct _Wsecure_rng *);
 @
 \fimcodigo
 
@@ -246,7 +253,7 @@ our random number generator after its initialization. First we need
 the headers for thread support where this is supported:
 
 \iniciocodigo
-@<Including Headers@>+=
+@<Including Headers@>=
 #if defined(__unix__) || defined(__APPLE__)
 #include <pthread.h>
 #endif
@@ -312,11 +319,14 @@ LeaveCriticalSection(&(rng -> mutex));
 @
 \fimcodigo
 
-The main reason for a function to finalize the generator, in our case,
-the function \monoespaco{\_Wdestroy\_rng}, is the need to finalize the
-mutex. And free allocated memory if needed. As there is no other
-reason, here we already know the necessary to describe the generator
-finalization. And we can define the finalization function:
+The main reason we need a function to finalize our generator, the
+function \monoespaco{\_Wdestroy\_rng}, is that we must finalize the
+use of the mutex, as well as deallocate the generator if
+necessary. Since that’s all it does, we can already declare this
+function here, as we now have what’s needed to define it. Also,
+there’s no difference between deallocating the structure of a regular
+generator and that of a cryptographically secure one:
+
 
 \iniciocodigo
 @<Definition: \_Wdestroy\_rng@>=
@@ -327,6 +337,18 @@ bool _Wdestroy_rng(void (*free)(void *), struct _Wrng *rng){
 #elif defined(_WIN32)
   DeleteCriticalSection(&(rng -> mutex));
   ret = true; // According with the documentation, this always succeeds
+#endif
+  if(free != NULL)
+    free(rng);
+  return ret;
+}
+bool _Wdestroy_secure_rng(void (*free)(void *), struct _Wsecure_rng *rng){
+  bool ret;
+#if defined(__unix__) || defined(__APPLE__)
+  ret = pthread_mutex_destroy(&(rng -> mutex));
+#elif defined(_WIN32)
+  DeleteCriticalSection(&(rng -> mutex));
+  ret = true; // Sempre é bem-sucedida segundo a documentação
 #endif
   if(free != NULL)
     free(rng);
@@ -793,8 +815,7 @@ pseudo-random number is:
 
 \iniciocodigo
 @<Auxiliary Functions@>=
-#if defined(W_RNG_SPLITMIX) || defined(W_RNG_XOSHIRO) || defined(W_RNG_PCG) || \
-  defined(W_RNG_CHACHA20)
+#if defined(W_RNG_SPLITMIX) || defined(W_RNG_XOSHIRO) || defined(W_RNG_PCG)
 static uint64_t splitmix_next(uint64_t *state, uint64_t gamma){
   uint64_t ret;
   @<SplitMix: Bit Mixer@>
@@ -846,7 +867,6 @@ $2^{64}$:
 #ifdef W_RNG_SPLITMIX
 struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
                            uint64_t *seed){
-  int i;
   struct _Wrng *rng = (struct _Wrng *) allocator(sizeof(struct _Wrng));
   if(rng != NULL){
     if(size < 1)
@@ -1237,6 +1257,13 @@ us, ChaCha20 will be only another RNG like the previous ones. The
 difference is that it is expected to have a greater quality at the
 cost of being slower.
 
+Since the goal of our API is to provide an option for both regular and
+cryptographically secure random number generators, and ChaCha20 is our
+only cryptographically secure generator, it is an algorithm that will
+always be defined, regardless of the program’s macros. However, if the
+user defines the macro \monoespaco{W\_RNG\_CHACHA20}, then ChaCha20
+will also be used as a regular (non-cryptographic) generator.
+
 This algorithm has as first component a padding function that gets as
 input 384 bits that will be treated as a sequence of 64-bit
 numbers. The padding function outputs 512 bits that should be
@@ -1246,7 +1273,6 @@ matrix. Even if we do not store them as a matrix.
 The padding function is:
 
 @<ChaCha20: Padding@>=
-#ifdef W_RNG_CHACHA20
 static void chacha_padding(uint64_t input[6], uint32_t output[16]){
   int i, j;
   output[0] = ('e' << 24) + ('x' << 16) + ('p' << 8) + 'a';
@@ -1258,7 +1284,6 @@ static void chacha_padding(uint64_t input[6], uint32_t output[16]){
     output[j+1] = input[i] % 4294967296llu;
   }
 }
-#endif
 @
 
 In the input for this padding function, the first 4 values are taken
@@ -1271,7 +1296,6 @@ The next component is the function below that gets 4 values as 32-bit
 numbers and modify them doing a sequence of operations:
 
 @<ChaCha20: QuarterRound@>=
-#ifdef W_RNG_CHACHA20
 void quarter_round(uint32_t *a, uint32_t *b, uint32_t *c, uint32_t *d){
   *a = *a + *b;
   *d = *d ^ *a;
@@ -1286,7 +1310,6 @@ void quarter_round(uint32_t *a, uint32_t *b, uint32_t *c, uint32_t *d){
   *b = *b ^ *c;
   *b = (*b << 7) | (*b >> 25);
 }
-#endif
 @
 
 The previous operation is used in the next permutation function that
@@ -1296,7 +1319,6 @@ there are 10 iterations, we make 20 transformations in our input.
 
 \iniciocodigo
 @<ChaCha20: Permutação@>=
-#ifdef W_RNG_CHACHA20
 void chacha_permutation(uint32_t elements[16]){
   int i;
   for(i = 0; i < 10; i ++){
@@ -1310,7 +1332,6 @@ void chacha_permutation(uint32_t elements[16]){
     quarter_round(&elements[3], &elements[4], &elements[9], &elements[14]);
   }
 }
-#endif
 @
 \fimcodigo
 
@@ -1331,6 +1352,12 @@ struct _Wrng{
   @<Mutex Declaration@>
 };
 #endif
+struct _Wsecure_rng{
+  uint64_t array[6];
+  uint32_t generated_values[16];
+  int index;
+  @<Mutex Declaration@>
+};
 @
 \fimcodigo
 
@@ -1350,31 +1377,24 @@ between 4 and 5 values:
 @
 \fimcodigo
 
-If we have less values we will use the SplitMix algorithm to produce
-the remaining values, except for the nonce that we can keep with
-0. Our initialization function is given below.
+If we have less values we return NULL, as we should not accept running
+a secure RNG with insufficient randomness.
 
 \iniciocodigo
 @<Definition: \_Wcreate\_rng@>=
-#ifdef W_RNG_CHACHA20
-struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
-                           uint64_t *seed){
-  int i, j;
-  struct _Wrng *rng = (struct _Wrng *) allocator(sizeof(struct _Wrng));
+struct _Wsecure_rng *_Wcreate_secure_rng(void *(*allocator)(size_t), 
+                                         size_t size,
+                                         uint64_t *seed){
+  int i;
+  struct _Wsecure_rng *rng = (struct _Wsecure_rng *) 
+                                 allocator(sizeof(struct _Wrng));
   if(rng != NULL){
     for(i = 0; i < 4; i ++){
       if(i < ((int) size) - 1 || size >= 4)
         rng -> array[i] = seed[i];
       else{
-        // Using SplitMix to fill the remaining values
-        uint64_t state, gamma = 0x9e3779b97f4a7c15;
-        if(size > 0)
-          state = seed[i];
-        else
-          state = 0x32147198b5436569;
-        for(j = i; j < 4; j ++)
-          rng -> array[j] = splitmix_next(&state, gamma);
-        break;        
+        // Not enough randomness
+        return NULL;
       }
     }
     rng -> array[4] = 0;
@@ -1387,6 +1407,11 @@ struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
     @<ChaCha: Debug Message@>
   }
   return rng;
+}
+#ifdef W_RNG_CHACHA20
+struct _Wrng *_Wcreate_rng(void *(*allocator)(size_t), size_t size,
+                           uint64_t *seed){
+  return (struct _Wrng *) _Wcreate_secure_rng(allocator, size, seed);
 }
 #endif
 @
@@ -1415,11 +1440,10 @@ produce new values, we proceed as below:
 
 \iniciocodigo
 @<Definition: \_Wrand@>=
-#ifdef W_RNG_CHACHA20
 @<ChaCha20: Padding@>
 @<ChaCha20: QuarterRound@>
 @<ChaCha20: Permutação@>
-uint64_t _Wrand(struct _Wrng *rng){
+uint64_t _Wsecure_rand(struct _Wsecure_rng *rng){
   uint64_t ret;
   @<Mutex:WAIT@>
   if(rng -> index % 16 == 0){
@@ -1433,6 +1457,10 @@ uint64_t _Wrand(struct _Wrng *rng){
   rng -> index += 2; 
   @<Mutex:SIGNAL@>
   return ret;
+}
+#ifdef W_RNG_CHACHA20
+uint64_t _Wrand(struct _Wrng *rng){
+  return _Wsecure_rand((struct _Wsecure_rng *) rng);
 }
 #endif
 @
